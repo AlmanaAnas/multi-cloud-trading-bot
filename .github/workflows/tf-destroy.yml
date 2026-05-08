@@ -1,0 +1,62 @@
+# .github/workflows/tf-destroy.yml
+#
+# Manual trigger only — never runs automatically.
+# Destroys ALL infrastructure in both AWS and GCP.
+# Use this at the end of your demo to avoid any charges.
+#
+# How to run:
+# GitHub repo → Actions tab → Terraform destroy → Run workflow
+
+name: Terraform destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DESTROY to confirm you want to tear down all infrastructure"
+        required: true
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    name: Terraform destroy — dev
+    runs-on: ubuntu-latest
+
+    # Only runs if the user typed DESTROY in the confirmation box
+    if: github.event.inputs.confirm == 'DESTROY'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Authenticate to GCP via Workload Identity
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Terraform init
+        working-directory: environments/dev
+        run: terraform init
+
+      - name: Terraform destroy
+        working-directory: environments/dev
+        run: terraform destroy -auto-approve
+
+      - name: Confirm destruction
+        run: echo "All infrastructure has been destroyed successfully"

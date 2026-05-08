@@ -1,0 +1,56 @@
+# .github/workflows/tf-apply.yml
+#
+# Runs when a PR is merged to main.
+# Applies the Terraform changes to both AWS and GCP.
+
+name: Terraform apply
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply:
+    name: Terraform apply — dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Authenticate to GCP via Workload Identity
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Terraform init
+        working-directory: environments/dev
+        run: terraform init
+
+      - name: Terraform validate
+        working-directory: environments/dev
+        run: terraform validate
+
+      - name: Terraform apply
+        working-directory: environments/dev
+        run: terraform apply -auto-approve
+
+      - name: Show outputs
+        working-directory: environments/dev
+        run: terraform output
