@@ -1,9 +1,11 @@
 # environments/dev/backend.tf
-# Using local backend until AWS account is ready
-# Replace with S3 backend when you have your AWS account
 
 terraform {
-  backend "local" {
-    path = "terraform.tfstate"
+  backend "s3" {
+    bucket       = "tf-state-trading-bot-almanaanas"
+    key          = "dev/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true
+    encrypt      = true
   }
 }

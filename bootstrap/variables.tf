@@ -15,7 +15,7 @@ variable "project_name" {
 variable "state_bucket_name" {
   description = "S3 bucket name — must be globally unique across all AWS accounts"
   type        = string
-  default     = "FILL_IN_LATER"
+  default     = "tf-state-trading-bot-almanaanas"
 }
 
 variable "dynamodb_table_name" {
