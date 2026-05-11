@@ -1,5 +1,3 @@
-# environments/dev/backend.tf
-
 terraform {
   backend "s3" {
     bucket       = "tf-state-trading-bot-almanaanas"
