@@ -54,14 +54,15 @@ resource "aws_iam_role_policy" "github_actions" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
+   {
         Sid    = "LambdaAndEvents"
         Effect = "Allow"
         Action = [
           "lambda:*",
           "events:*",
           "logs:*",
-          "ssm:*"
+          "ssm:*",
+          "cloudwatch:*"
         ]
         Resource = "*"
       },
