@@ -3,631 +3,519 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Multi-Cloud Trading Bot — Anas Almana</title>
+<title>TradeSignal — Live Crypto Intelligence</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --aws:#E8861A;--gcp:#3B73D4;--green:#1A9E6E;--red:#C94040;
-  --bg:#F7F5F0;--white:#FFFFFF;--ink:#1A1814;--ink2:#3D3A34;--ink3:#7A766E;
-  --border:#E2DED7;--surface:#EDEBE6;
+  --green:#0ECB81;--red:#F6465D;--yellow:#F0B90B;
+  --bg:#0B0E11;--surface:#161A1E;--card:#1E2328;
+  --border:#2B2F36;--text:#EAECEF;--muted:#848E9C;--dim:#474D57;
   --display:'Playfair Display',Georgia,serif;
   --body:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
 }
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.6;overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--body);line-height:1.6;overflow-x:hidden;min-height:100vh}
 
 nav{
   position:sticky;top:0;z-index:100;
   display:flex;justify-content:space-between;align-items:center;
-  padding:0 56px;height:60px;
-  background:rgba(247,245,240,.95);backdrop-filter:blur(12px);
+  padding:0 48px;height:56px;
+  background:rgba(11,14,17,.95);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);
 }
-.nav-name{font-family:var(--display);font-size:16px;font-weight:600}
+.nav-logo{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--text);letter-spacing:.05em}
+.nav-logo span{color:var(--green)}
 .nav-links{display:flex;gap:28px}
-.nav-links a{font-size:13px;color:var(--ink3);text-decoration:none;transition:color .15s}
-.nav-links a:hover{color:var(--ink)}
-.nav-live{
-  display:flex;align-items:center;gap:7px;
-  font-family:var(--mono);font-size:11px;color:var(--green);
-  background:rgba(26,158,110,.08);border:1px solid rgba(26,158,110,.2);
-  padding:4px 12px;border-radius:20px;
-}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--green);
-  animation:blink 2s ease-in-out infinite}
+.nav-links a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .15s}
+.nav-links a:hover{color:var(--text)}
+.nav-status{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--green)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s ease-in-out infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
-.hero{
-  max-width:1040px;margin:0 auto;
-  padding:80px 56px 64px;
-  display:grid;grid-template-columns:1fr 1fr;
-  gap:64px;align-items:center;
+/* ── ASSET SELECTOR ── */
+.asset-bar{
   border-bottom:1px solid var(--border);
+  background:var(--surface);
 }
-.hero-tag{font-family:var(--mono);font-size:11px;color:var(--ink3);
-  letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;display:block}
-.hero h1{font-family:var(--display);font-size:clamp(34px,4.5vw,52px);
-  font-weight:700;line-height:1.12;letter-spacing:-.01em;margin-bottom:18px}
-.hero-desc{font-size:15px;color:var(--ink2);line-height:1.75;margin-bottom:28px}
-.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
-.btn{font-family:var(--body);font-size:13px;font-weight:500;
-  padding:11px 24px;border-radius:6px;text-decoration:none;transition:all .15s;display:inline-block}
-.btn-dark{background:var(--ink);color:var(--bg)}.btn-dark:hover{background:#333}
-.btn-ghost{background:transparent;color:var(--ink2);border:1px solid var(--border)}
-.btn-ghost:hover{border-color:var(--ink3)}
-
-.hero-right{display:flex;flex-direction:column;gap:12px}
-.stat-card{background:var(--white);border:1px solid var(--border);border-radius:10px;
-  padding:18px 22px;display:flex;justify-content:space-between;align-items:center}
-.sc-val{font-family:var(--display);font-size:26px;font-weight:600}
-.sc-val.g{color:var(--green)}.sc-val.a{color:var(--aws)}.sc-val.b{color:var(--gcp)}
-.sc-lbl{font-size:12px;color:var(--ink3);margin-top:2px}
-
-.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);
-  border-bottom:1px solid var(--border);background:var(--white)}
-.stat{padding:24px 32px;border-right:1px solid var(--border)}
-.stat:last-child{border-right:none}
-.stat-val{font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-.02em}
-.stat-val.g{color:var(--green)}.stat-val.a{color:var(--aws)}.stat-val.b{color:var(--gcp)}
-.stat-lbl{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:3px}
-
-section{max-width:1040px;margin:0 auto;padding:72px 56px}
-.sec-tag{font-family:var(--mono);font-size:11px;color:var(--ink3);
-  letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;display:block}
-.sec-h{font-family:var(--display);font-size:clamp(24px,3vw,36px);
-  font-weight:600;letter-spacing:-.01em;margin-bottom:12px}
-.sec-sub{font-size:15px;color:var(--ink2);line-height:1.7;max-width:500px}
-
-/* ── SIGNALS SECTION ── */
-.signals-wrap{background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-.signals-inner{max-width:1040px;margin:0 auto;padding:72px 56px}
-.signals-grid{display:grid;grid-template-columns:3fr 2fr;gap:28px;margin-top:48px}
-
-.feed{background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.feed-head{
-  display:flex;justify-content:space-between;align-items:center;
-  padding:14px 20px;border-bottom:1px solid var(--border);
+.asset-inner{
+  max-width:1100px;margin:0 auto;
+  padding:0 48px;
+  display:flex;gap:0;
 }
-.feed-title{font-size:12px;font-weight:500;color:var(--ink2)}
+.asset-tab{
+  padding:14px 24px;
+  font-family:var(--mono);font-size:12px;font-weight:500;
+  color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:all .15s;display:flex;align-items:center;gap:8px;
+  user-select:none;
+}
+.asset-tab:hover{color:var(--text)}
+.asset-tab.active{color:var(--text);border-bottom-color:var(--green)}
+.asset-tab .asset-price{
+  font-size:11px;color:var(--muted);margin-left:4px;
+}
+.asset-tab.active .asset-price{color:var(--green)}
+.asset-change{font-size:10px;margin-left:2px}
+.asset-change.up{color:var(--green)}.asset-change.down{color:var(--red)}
+
+/* ── MAIN LAYOUT ── */
+.main{max-width:1100px;margin:0 auto;padding:32px 48px 48px}
+
+.top-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+
+/* ── PRICE CARD ── */
+.price-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.pc-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border)}
+.pc-pair{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text)}
+.pc-live{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--green)}
+.pc-body{padding:20px}
+.pc-price{font-family:var(--mono);font-size:34px;font-weight:500;color:var(--text);margin-bottom:4px;letter-spacing:-.01em;transition:color .3s}
+.pc-change{font-family:var(--mono);font-size:13px;margin-bottom:20px}
+.pc-change.up{color:var(--green)}.pc-change.down{color:var(--red)}
+.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.pc-stat{padding:10px 0;border-bottom:1px solid var(--border)}
+.pc-stat:nth-child(odd){padding-right:16px;border-right:1px solid var(--border)}
+.pc-stat:nth-child(even){padding-left:16px}
+.pc-stat:nth-last-child(-n+2){border-bottom:none}
+.pc-stat-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:3px;letter-spacing:.05em;text-transform:uppercase}
+.pc-stat-val{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text)}
+.pc-updated{font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:14px;text-align:right}
+
+/* ── CURRENT SIGNAL ── */
+.current-signal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.cs-label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.cs-top{display:flex;justify-content:space-between;align-items:flex-start}
+.cs-direction{font-family:var(--mono);font-size:32px;font-weight:500}
+.cs-direction.long{color:var(--green)}.cs-direction.short{color:var(--red)}
+.cs-badge{
+  padding:4px 12px;border-radius:4px;
+  font-family:var(--mono);font-size:11px;font-weight:500;
+}
+.cs-badge.long{background:rgba(14,203,129,.1);color:var(--green);border:1px solid rgba(14,203,129,.25)}
+.cs-badge.short{background:rgba(246,70,93,.1);color:var(--red);border:1px solid rgba(246,70,93,.25)}
+.cs-conf-wrap{}
+.cs-conf-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.cs-conf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.cs-conf-val{font-family:var(--mono);font-size:20px;font-weight:500}
+.cs-conf-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.cs-conf-fill{height:100%;border-radius:3px;transition:width 1.2s ease}
+.cs-stats{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.cs-stat{padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.cs-stat:nth-child(odd){padding-right:12px;border-right:1px solid var(--border)}
+.cs-stat:nth-child(even){padding-left:12px}
+.cs-stat:nth-last-child(-n+2){border-bottom:none}
+.cs-stat-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.cs-stat-val{font-family:var(--mono);font-size:12px;font-weight:500}
+
+/* ── ALERT ── */
+.alert-box{
+  background:rgba(14,203,129,.06);border:1px solid rgba(14,203,129,.2);
+  border-radius:10px;padding:14px 18px;
+  display:flex;align-items:center;gap:12px;
+  font-family:var(--mono);font-size:12px;margin-bottom:20px;
+}
+.alert-box.bear{background:rgba(246,70,93,.06);border-color:rgba(246,70,93,.2)}
+.alert-icon{font-size:16px}
+.alert-text{color:var(--text);flex:1}
+.alert-text .hl-bull{color:var(--green);font-weight:500}
+.alert-text .hl-bear{color:var(--red);font-weight:500}
+.alert-time{color:var(--muted);font-size:11px;white-space:nowrap}
+
+/* ── FEED ── */
+.feed{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.feed-head{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border)}
+.feed-title{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .feed-live{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--green)}
-
 .feed-cols{
-  display:grid;grid-template-columns:90px 1fr 60px 80px 90px;
-  gap:10px;padding:10px 20px;
-  font-family:var(--mono);font-size:10px;color:var(--ink3);
-  border-bottom:1px solid var(--border);
+  display:grid;grid-template-columns:96px 90px 70px 100px 110px 110px;
+  gap:0;padding:10px 20px;
+  font-family:var(--mono);font-size:10px;color:var(--dim);
+  border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em;
 }
-.signal-row{
-  display:grid;grid-template-columns:90px 1fr 60px 80px 90px;
-  gap:10px;align-items:center;
-  padding:12px 20px;border-bottom:1px solid rgba(226,222,215,.5);
-  font-size:13px;
+.sig-row{
+  display:grid;grid-template-columns:96px 90px 70px 100px 110px 110px;
+  gap:0;align-items:center;
+  padding:12px 20px;border-bottom:1px solid rgba(43,47,54,.5);
+  font-size:13px;transition:background .1s;
 }
-.signal-row:last-child{border-bottom:none}
-.sr-time{font-family:var(--mono);font-size:11px;color:var(--ink3)}
-.sr-pair{font-weight:500}
-.sr-long{color:var(--green);font-family:var(--mono);font-size:11px;font-weight:500}
-.sr-short{color:var(--red);font-family:var(--mono);font-size:11px;font-weight:500}
-.sr-conf{font-family:var(--mono);font-size:12px;text-align:right}
-.sr-sl{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right}
-.feed-note{padding:12px 20px;font-family:var(--mono);font-size:10px;color:var(--ink3);
-  border-top:1px solid var(--border)}
+.sig-row:last-child{border-bottom:none}
+.sig-row:hover{background:rgba(255,255,255,.02)}
+.sig-time{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.sig-pair{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text)}
+.sig-long{display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:3px;font-family:var(--mono);font-size:11px;font-weight:500;background:rgba(14,203,129,.1);color:var(--green);border:1px solid rgba(14,203,129,.2)}
+.sig-short{display:inline-flex;align-items:center;justify-content:center;padding:2px 10px;border-radius:3px;font-family:var(--mono);font-size:11px;font-weight:500;background:rgba(246,70,93,.1);color:var(--red);border:1px solid rgba(246,70,93,.2)}
+.sig-conf{font-family:var(--mono);font-size:12px;text-align:right;padding-right:8px}
+.sig-conf.high{color:var(--green)}.sig-conf.med{color:var(--yellow)}.sig-conf.low{color:var(--muted)}
+.sig-price{font-family:var(--mono);font-size:12px;text-align:right;padding-right:8px}
+.sig-sl{font-family:var(--mono);font-size:12px;text-align:right;color:var(--muted)}
+.feed-note{padding:10px 20px;font-family:var(--mono);font-size:10px;color:var(--dim);border-top:1px solid var(--border)}
 
-.metrics-panel{display:flex;flex-direction:column;gap:14px}
-.mc{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
-.mc-lbl{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-bottom:5px}
-.mc-val{font-family:var(--display);font-size:24px;font-weight:600;color:var(--ink)}
-.mc-val.g{color:var(--green)}.mc-val.a{color:var(--aws)}.mc-val.b{color:var(--gcp)}
-.mc-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
-.mc-fill{height:100%;border-radius:2px;transition:width 1.2s ease}
-.mc-sub{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:4px}
-.mc-dark{background:var(--ink);border-color:var(--ink)}
-.mc-dark .mc-lbl{color:rgba(247,245,240,.35)}
-.mc-dark .mc-val{color:var(--green)}
-.mc-dark .mc-sub{color:rgba(247,245,240,.3)}
+/* ── INDICATORS ROW ── */
+.ind-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+.ind-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.ind-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase}
+.ind-val{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--text)}
+.ind-val.bullish{color:var(--green)}.ind-val.bearish{color:var(--red)}.ind-val.neutral{color:var(--yellow)}
+.ind-bar{height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.ind-fill{height:100%;border-radius:2px;transition:width 1s ease}
+.ind-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:5px}
 
-/* ── INFRA ── */
-.infra-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:48px}
-.infra-card{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.infra-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
-.infra-dot{width:9px;height:9px;border-radius:50%}
-.infra-dot.aws{background:var(--aws)}.infra-dot.gcp{background:var(--gcp)}
-.infra-cloud{font-size:13px;font-weight:500}
-.infra-region{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-left:auto}
-.infra-row{display:flex;justify-content:space-between;align-items:center;
-  padding:9px 18px;border-bottom:1px solid rgba(226,222,215,.5);font-size:12px}
-.infra-row:last-child{border-bottom:none}
-.infra-name{color:var(--ink)}.infra-type{font-family:var(--mono);font-size:10px;color:var(--ink3)}
-.infra-ok{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--green)}
-.ok-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
-
-/* ── SECURITY ── */
-.sec-dark{background:var(--ink);color:var(--bg)}
-.sec-dark-inner{max-width:1040px;margin:0 auto;padding:72px 56px}
-.sec-dark .sec-tag{color:rgba(247,245,240,.35)}
-.sec-dark .sec-h{color:var(--bg)}
-.sec-dark .sec-sub{color:rgba(247,245,240,.45)}
-.sec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:48px;
-  background:rgba(247,245,240,.08);border:1px solid rgba(247,245,240,.08);
-  border-radius:12px;overflow:hidden}
-.sec-card{background:rgba(247,245,240,.03);padding:26px 22px}
-.sec-icon{font-size:20px;margin-bottom:12px}
-.sec-title{font-size:14px;font-weight:500;color:var(--bg);margin-bottom:7px}
-.sec-desc{font-size:12px;color:rgba(247,245,240,.4);line-height:1.7}
-.sec-note{font-family:var(--mono);font-size:11px;color:var(--green);margin-top:12px}
-
-/* ── ARCH DIAGRAM ── */
-.arch-box{margin-top:48px;background:var(--white);border:1px solid var(--border);
-  border-radius:12px;padding:36px}
-.arch-regions{display:grid;grid-template-columns:1fr 68px 1fr;align-items:start}
-.arch-region{border:1px dashed;border-radius:10px;padding:18px 14px;position:relative}
-.arch-region.aws{border-color:rgba(232,134,26,.3);background:rgba(232,134,26,.03)}
-.arch-region.gcp{border-color:rgba(59,115,212,.3);background:rgba(59,115,212,.03)}
-.arch-rl{position:absolute;top:-9px;left:12px;font-family:var(--mono);font-size:10px;
-  font-weight:500;padding:1px 8px;border-radius:3px;background:var(--white)}
-.arch-region.aws .arch-rl{color:var(--aws);border:1px solid rgba(232,134,26,.3)}
-.arch-region.gcp .arch-rl{color:var(--gcp);border:1px solid rgba(59,115,212,.3)}
-.arch-svc{background:var(--bg);border:1px solid var(--border);border-radius:6px;
-  padding:8px 11px;margin-bottom:6px}
-.arch-svc:last-child{margin-bottom:0}
-.arch-svc.a{border-left:2px solid var(--aws)}
-.arch-svc.g{border-left:2px solid var(--gcp)}
-.arch-svc.dim{border-left:2px solid var(--border);opacity:.5}
-.arch-svc-name{font-size:12px;font-weight:500}
-.arch-svc-desc{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:1px}
-.arch-arrow{text-align:center;color:var(--border);font-size:12px;height:16px;
-  display:flex;align-items:center;justify-content:center}
-.arch-bridge{display:flex;flex-direction:column;align-items:center;padding-top:36px}
-.arch-bridge-lbl{font-family:var(--mono);font-size:9px;color:var(--green);
-  writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.1em;margin-bottom:4px}
-.arch-bridge-line{width:1px;flex:1;min-height:60px;
-  background:repeating-linear-gradient(to bottom,var(--green) 0,var(--green) 4px,transparent 4px,transparent 8px)}
-.arch-bridge-tip{width:0;height:0;border-left:3px solid transparent;
-  border-right:3px solid transparent;border-top:5px solid var(--green)}
-.arch-divider{height:1px;background:var(--border);opacity:.4;margin:10px 0 9px}
-.arch-outputs{display:grid;grid-template-columns:1fr 68px 1fr;margin-top:12px}
-.arch-out-col{display:flex;flex-direction:column;align-items:center}
-.arch-out-stem{width:1px;height:12px;
-  background:repeating-linear-gradient(to bottom,var(--border) 0,var(--border) 3px,transparent 3px,transparent 6px)}
-.arch-out-box{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 11px}
-.arch-out-box.b{border-left:2px solid var(--gcp)}
-.arch-out-box.r{border-left:2px solid var(--red)}
-.arch-legend{display:flex;gap:18px;justify-content:center;margin-top:20px;flex-wrap:wrap}
-.leg{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--ink3)}
-.leg-line{width:20px;height:1.5px}
-.leg-line.f{background:var(--border)}
-.leg-line.a{background:repeating-linear-gradient(to right,var(--green) 0,var(--green) 4px,transparent 4px,transparent 8px)}
-.leg-sq{width:10px;height:10px;background:var(--surface);border:1px solid var(--border);border-radius:2px;opacity:.6}
-.ci-row{display:flex;justify-content:center}
-.ci-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;
-  padding:9px 28px;text-align:center;margin-bottom:0}
-.ci-name{font-size:12px;font-weight:500;color:var(--ink2)}
-.ci-desc{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:2px}
-.ci-arms{display:grid;grid-template-columns:1fr 68px 1fr;height:24px}
-.ci-arm{position:relative}
-.ci-arm.l{border-right:1px dashed var(--border);border-bottom:1px dashed var(--border);margin-left:50%}
-.ci-arm.r{border-left:1px dashed var(--border);border-bottom:1px dashed var(--border);margin-right:50%}
-.ci-tip{position:absolute;bottom:-4px;width:0;height:0;
-  border-left:3px solid transparent;border-right:3px solid transparent;border-top:4px solid var(--border)}
-.ci-arm.l .ci-tip{left:-3px}.ci-arm.r .ci-tip{right:-3px}
-
-footer{border-top:1px solid var(--border);padding:36px 56px;
+footer{
+  border-top:1px solid var(--border);padding:20px 48px;
   display:flex;justify-content:space-between;align-items:center;
-  max-width:1040px;margin:0 auto;width:100%}
-.footer-name{font-family:var(--display);font-size:14px;font-weight:600}
-.footer-links{display:flex;gap:20px}
-.footer-links a{font-size:13px;color:var(--ink3);text-decoration:none}
-.footer-links a:hover{color:var(--ink)}
-.footer-note{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+  max-width:1100px;margin:0 auto;
+}
+.footer-logo{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--muted)}
+.footer-logo span{color:var(--green)}
+.footer-note{font-family:var(--mono);font-size:10px;color:var(--dim);text-align:right}
 
 @media(max-width:768px){
-  nav{padding:0 20px}.nav-links{display:none}
-  .hero,.signals-inner,.sec-dark-inner,section{padding:48px 20px}
-  .hero{grid-template-columns:1fr;gap:32px}
-  .stats-bar{grid-template-columns:1fr 1fr}
-  .stat{border-right:none;border-bottom:1px solid var(--border)}
-  .signals-grid,.infra-grid,.sec-grid{grid-template-columns:1fr}
-  .signal-row,.feed-cols{grid-template-columns:70px 1fr 52px 70px}
-  .sr-sl{display:none}
-  footer{flex-direction:column;gap:16px;padding:28px 20px}
+  nav{padding:0 16px}.nav-links{display:none}
+  .asset-inner{padding:0 16px;overflow-x:auto}
+  .asset-tab{padding:12px 16px;white-space:nowrap}
+  .main{padding:20px 16px 40px}
+  .top-grid{grid-template-columns:1fr}
+  .feed-cols,.sig-row{grid-template-columns:80px 80px 60px 90px}
+  .sig-price,.sig-sl{display:none}
+  .ind-row{grid-template-columns:1fr}
+  footer{flex-direction:column;gap:10px;padding:20px 16px}
 }
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="nav-name">Anas Almana</div>
+  <div class="nav-logo">Trade<span>Signal</span></div>
   <div class="nav-links">
     <a href="#signals">Signals</a>
-    <a href="#infrastructure">Infrastructure</a>
-    <a href="#security">Security</a>
-    <a href="#architecture">Architecture</a>
+    <a href="#indicators">Indicators</a>
   </div>
-  <div class="nav-live"><span class="dot"></span>Live · Binance</div>
+  <div class="nav-status"><span class="dot"></span>Live · Binance</div>
 </nav>
 
-<div style="border-bottom:1px solid var(--border)">
-<div class="hero">
-  <div>
-    <span class="hero-tag">Cloud Infrastructure · Portfolio Project</span>
-    <h1>Multi-Cloud<br>Trading Bot</h1>
-    <p class="hero-desc">
-      A production-grade event-driven pipeline running across AWS and GCP.
-      Every minute it pulls live Bitcoin prices from Binance, computes RSI,
-      ATR and moving averages, runs inference, and archives every signal
-      to BigQuery — entirely automated, zero stored credentials.
-    </p>
-    <div class="hero-btns">
-      <a href="https://github.com/AlmanaAnas/multi-cloud-trading-bot" class="btn btn-dark" target="_blank">View on GitHub →</a>
-      <a href="#signals" class="btn btn-ghost">See live signals</a>
+<!-- ASSET SELECTOR -->
+<div class="asset-bar">
+  <div class="asset-inner">
+    <div class="asset-tab active" data-symbol="BTCUSDT" data-name="BTC/USDT" onclick="selectAsset(this)">
+      <span>BTC/USDT</span>
+      <span class="asset-price" id="tab-price-BTCUSDT">—</span>
+      <span class="asset-change" id="tab-change-BTCUSDT"></span>
     </div>
-  </div>
-  <div class="hero-right">
-    <div class="stat-card">
-      <div><div class="sc-val g">41</div><div class="sc-lbl">Resources deployed across 2 clouds</div></div>
-      <span style="font-size:28px">☁️</span>
+    <div class="asset-tab" data-symbol="SOLUSDT" data-name="SOL/USDT" onclick="selectAsset(this)">
+      <span>SOL/USDT</span>
+      <span class="asset-price" id="tab-price-SOLUSDT">—</span>
+      <span class="asset-change" id="tab-change-SOLUSDT"></span>
     </div>
-    <div class="stat-card">
-      <div><div class="sc-val a" id="hero-price">Loading…</div><div class="sc-lbl">BTC/USDT live price · Binance</div></div>
-      <span style="font-size:28px">₿</span>
+    <div class="asset-tab" data-symbol="XLMUSDT" data-name="XLM/USDT" onclick="selectAsset(this)">
+      <span>XLM/USDT</span>
+      <span class="asset-price" id="tab-price-XLMUSDT">—</span>
+      <span class="asset-change" id="tab-change-XLMUSDT"></span>
     </div>
-    <div class="stat-card">
-      <div><div class="sc-val g">$0.00</div><div class="sc-lbl">Infrastructure cost · all free tier</div></div>
-      <span style="font-size:28px">💰</span>
-    </div>
-    <div class="stat-card">
-      <div><div class="sc-val b">0</div><div class="sc-lbl">Long-lived credentials stored</div></div>
-      <span style="font-size:28px">🔐</span>
-    </div>
-  </div>
-</div>
-</div>
-
-<div class="stats-bar">
-  <div class="stat"><div class="stat-val g">41</div><div class="stat-lbl">Resources deployed</div></div>
-  <div class="stat"><div class="stat-val a">2</div><div class="stat-lbl">Cloud providers</div></div>
-  <div class="stat"><div class="stat-val b">1 min</div><div class="stat-lbl">Pipeline interval</div></div>
-  <div class="stat"><div class="stat-val g">0</div><div class="stat-lbl">Stored credentials</div></div>
-</div>
-
-<!-- SIGNALS -->
-<div class="signals-wrap" id="signals">
-  <div class="signals-inner">
-    <span class="sec-tag">Live output</span>
-    <h2 class="sec-h">Real-time signals</h2>
-    <p class="sec-sub">Computed every minute from live Binance candle data. Confidence and stop loss are calculated from actual RSI, ATR, and moving averages — not sample data.</p>
-
-    <div class="signals-grid">
-      <div class="feed">
-        <div class="feed-head">
-          <div class="feed-title">BTC/USDT · 1-minute signals</div>
-          <div class="feed-live"><span class="dot"></span>live · Binance API</div>
-        </div>
-        <div class="feed-cols">
-          <div>Time (UTC)</div>
-          <div>Pair</div>
-          <div style="text-align:center">Signal</div>
-          <div style="text-align:right">Confidence</div>
-          <div style="text-align:right">Stop loss</div>
-        </div>
-        <div id="signals-list"></div>
-        <div class="feed-note" id="feed-updated">Fetching from Binance…</div>
-      </div>
-
-      <div class="metrics-panel">
-        <div class="mc">
-          <div class="mc-lbl">Current price</div>
-          <div class="mc-val a" id="m-price">—</div>
-          <div class="mc-sub" id="m-change">—</div>
-        </div>
-        <div class="mc">
-          <div class="mc-lbl">RSI (14)</div>
-          <div class="mc-val" id="m-rsi">—</div>
-          <div class="mc-bar"><div class="mc-fill" id="m-rsi-bar" style="width:0%;background:var(--ink3)"></div></div>
-          <div class="mc-sub" id="m-rsi-label">—</div>
-        </div>
-        <div class="mc">
-          <div class="mc-lbl">ATR (14) — volatility</div>
-          <div class="mc-val" id="m-atr">—</div>
-          <div class="mc-sub">Average true range · used for stop loss</div>
-        </div>
-        <div class="mc">
-          <div class="mc-lbl">Moving averages</div>
-          <div style="display:flex;justify-content:space-between;margin-top:4px">
-            <div>
-              <div style="font-family:var(--mono);font-size:10px;color:var(--ink3)">MA 20</div>
-              <div class="mc-val" id="m-ma20" style="font-size:18px">—</div>
-            </div>
-            <div style="text-align:right">
-              <div style="font-family:var(--mono);font-size:10px;color:var(--ink3)">MA 50</div>
-              <div class="mc-val" id="m-ma50" style="font-size:18px">—</div>
-            </div>
-          </div>
-          <div class="mc-sub" id="m-trend">—</div>
-        </div>
-        <div class="mc mc-dark">
-          <div class="mc-lbl">Stop loss (LONG)</div>
-          <div class="mc-val" id="m-sl">—</div>
-          <div class="mc-sub">Entry − (ATR × 1.5)</div>
-        </div>
-      </div>
+    <div class="asset-tab" data-symbol="POLUSDT" data-name="POL/USDT" onclick="selectAsset(this)">
+      <span>POL/USDT</span>
+      <span class="asset-price" id="tab-price-POLUSDT">—</span>
+      <span class="asset-change" id="tab-change-POLUSDT"></span>
     </div>
   </div>
 </div>
 
-<!-- INFRASTRUCTURE -->
-<section id="infrastructure">
-  <span class="sec-tag">Infrastructure</span>
-  <h2 class="sec-h">41 resources across 2 clouds</h2>
-  <p class="sec-sub">Every resource declared in Terraform. No manual clicks. Reprovisioned from scratch in minutes.</p>
-  <div class="infra-grid">
-    <div class="infra-card">
-      <div class="infra-head">
-        <div class="infra-dot aws"></div>
-        <div class="infra-cloud">Amazon Web Services</div>
-        <div class="infra-region">eu-north-1</div>
+<div class="main">
+
+  <!-- TOP GRID -->
+  <div class="top-grid">
+    <div class="price-card">
+      <div class="pc-header">
+        <div class="pc-pair" id="pc-pair">BTC / USDT</div>
+        <div class="pc-live"><span class="dot"></span>Live</div>
       </div>
-      <div class="infra-row"><div><div class="infra-name">VPC + private subnet</div><div class="infra-type">10.0.0.0/16 · Lambda in 10.0.2.0/24</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">Lambda function</div><div class="infra-type">trading-bot-ingest-dev · Python 3.11</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">EventBridge rule</div><div class="infra-type">rate(1 minute) · ENABLED</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">Security group</div><div class="infra-type">Egress 443 only · deny all ingress</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">VPC Endpoints</div><div class="infra-type">S3 · SSM · CloudWatch · STS</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">S3 + DynamoDB</div><div class="infra-type">Terraform state · lock table</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
+      <div class="pc-body">
+        <div class="pc-price" id="pc-price">—</div>
+        <div class="pc-change" id="pc-change">Loading…</div>
+        <div class="pc-grid">
+          <div class="pc-stat"><div class="pc-stat-lbl">24H HIGH</div><div class="pc-stat-val" id="pc-high">—</div></div>
+          <div class="pc-stat"><div class="pc-stat-lbl">24H LOW</div><div class="pc-stat-val" id="pc-low">—</div></div>
+          <div class="pc-stat"><div class="pc-stat-lbl">RSI (14)</div><div class="pc-stat-val" id="pc-rsi">—</div></div>
+          <div class="pc-stat"><div class="pc-stat-lbl">ATR (14)</div><div class="pc-stat-val" id="pc-atr">—</div></div>
+          <div class="pc-stat"><div class="pc-stat-lbl">MA 20</div><div class="pc-stat-val" id="pc-ma20">—</div></div>
+          <div class="pc-stat"><div class="pc-stat-lbl">MA 50</div><div class="pc-stat-val" id="pc-ma50">—</div></div>
+        </div>
+        <div class="pc-updated" id="pc-updated">—</div>
+      </div>
     </div>
-    <div class="infra-card">
-      <div class="infra-head">
-        <div class="infra-dot gcp"></div>
-        <div class="infra-cloud">Google Cloud Platform</div>
-        <div class="infra-region">europe-west1</div>
+
+    <div class="current-signal">
+      <div class="cs-label">Current signal</div>
+      <div class="cs-top">
+        <div class="cs-direction long" id="cs-dir">—</div>
+        <span class="cs-badge long" id="cs-badge">—</span>
       </div>
-      <div class="infra-row"><div><div class="infra-name">VPC + VPC connector</div><div class="infra-type">10.1.0.0/16 · connector /28</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">Cloud Function 2nd gen</div><div class="infra-type">ML inference · VPC-connected</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">Pub/Sub + DLQ</div><div class="infra-type">trading-bot-market-data-dev</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">BigQuery</div><div class="infra-type">trading_bot_dev · day partitioned</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">Firewall rules</div><div class="infra-type">Allow Pub/Sub push · deny all ingress</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
-      <div class="infra-row"><div><div class="infra-name">Workload Identity</div><div class="infra-type">github-pool-dev · zero stored keys</div></div><div class="infra-ok"><span class="ok-dot"></span>active</div></div>
+      <div class="cs-conf-wrap">
+        <div class="cs-conf-label">Confidence level</div>
+        <div class="cs-conf-row">
+          <div class="cs-conf-val" id="cs-conf-val">—</div>
+        </div>
+        <div class="cs-conf-bar"><div class="cs-conf-fill" id="cs-conf-fill" style="width:0%"></div></div>
+      </div>
+      <div class="cs-stats">
+        <div class="cs-stat"><div class="cs-stat-lbl">Entry price</div><div class="cs-stat-val" id="cs-entry">—</div></div>
+        <div class="cs-stat"><div class="cs-stat-lbl">Stop loss</div><div class="cs-stat-val" id="cs-sl">—</div></div>
+        <div class="cs-stat"><div class="cs-stat-lbl">Risk (ATR×1.5)</div><div class="cs-stat-val" id="cs-risk">—</div></div>
+        <div class="cs-stat"><div class="cs-stat-lbl">Trend</div><div class="cs-stat-val" id="cs-trend">—</div></div>
+      </div>
     </div>
   </div>
-</section>
 
-<!-- SECURITY -->
-<div class="sec-dark" id="security">
-  <div class="sec-dark-inner">
-    <span class="sec-tag">Security</span>
-    <h2 class="sec-h">Zero credentials stored anywhere</h2>
-    <p class="sec-sub">Every auth boundary uses short-lived tokens. No access keys, no service account files, no passwords.</p>
-    <div class="sec-grid">
-      <div class="sec-card"><div class="sec-icon">🔑</div><div class="sec-title">GitHub → AWS</div><div class="sec-desc">OIDC token assumes an IAM role locked to this exact repository. No AWS_ACCESS_KEY_ID ever stored.</div><div class="sec-note">✓ keyless CI auth</div></div>
-      <div class="sec-card"><div class="sec-icon">🌉</div><div class="sec-title">GitHub → GCP</div><div class="sec-desc">Workload Identity Federation maps GitHub's OIDC token to a GCP service account. Attribute condition locks it to this repo.</div><div class="sec-note">✓ no SA key file</div></div>
-      <div class="sec-card"><div class="sec-icon">⚡</div><div class="sec-title">Lambda → Pub/Sub</div><div class="sec-desc">Lambda exchanges its AWS identity for a 1-hour GCP token at runtime via WIF. Nothing stored anywhere.</div><div class="sec-note">✓ cross-cloud keyless</div></div>
-      <div class="sec-card"><div class="sec-icon">🛡️</div><div class="sec-title">Private networking</div><div class="sec-desc">Lambda in a private subnet with VPC endpoints. Cloud Function behind firewall rules. No unnecessary public exposure.</div><div class="sec-note">✓ VPC + security groups</div></div>
-      <div class="sec-card"><div class="sec-icon">🗄️</div><div class="sec-title">Encrypted state</div><div class="sec-desc">Terraform state encrypted at rest in S3 (AES-256). Public access blocked. DynamoDB prevents concurrent corruption.</div><div class="sec-note">✓ encrypted + locked</div></div>
-      <div class="sec-card"><div class="sec-icon">💣</div><div class="sec-title">One-click teardown</div><div class="sec-desc">workflow_dispatch GitHub Action destroys all 41 resources in both clouds. No orphaned resources, no surprise costs.</div><div class="sec-note">✓ terraform destroy</div></div>
+  <!-- ALERT -->
+  <div class="alert-box" id="alert-box">
+    <div class="alert-icon" id="alert-icon">📊</div>
+    <div class="alert-text" id="alert-text">Computing signal…</div>
+    <div class="alert-time" id="alert-time">—</div>
+  </div>
+
+  <!-- FEED -->
+  <div class="feed" id="signals">
+    <div class="feed-head">
+      <div class="feed-title" id="feed-title">SIGNAL HISTORY · 1m</div>
+      <div class="feed-live"><span class="dot"></span>Live</div>
+    </div>
+    <div class="feed-cols">
+      <div>TIME</div><div>PAIR</div><div>SIGNAL</div>
+      <div style="text-align:right;padding-right:8px">CONFIDENCE</div>
+      <div style="text-align:right;padding-right:8px">ENTRY</div>
+      <div style="text-align:right">STOP LOSS</div>
+    </div>
+    <div id="signal-list"></div>
+    <div class="feed-note" id="feed-note">Fetching live data from Binance…</div>
+  </div>
+
+  <!-- INDICATORS -->
+  <div class="ind-row" id="indicators">
+    <div class="ind-card">
+      <div class="ind-label">RSI (14) — Momentum</div>
+      <div class="ind-val" id="ind-rsi">—</div>
+      <div class="ind-bar"><div class="ind-fill" id="ind-rsi-bar" style="width:0%"></div></div>
+      <div class="ind-sub" id="ind-rsi-sub">—</div>
+    </div>
+    <div class="ind-card">
+      <div class="ind-label">ATR (14) — Volatility</div>
+      <div class="ind-val" id="ind-atr">—</div>
+      <div class="ind-sub">Average true range · stop loss basis</div>
+    </div>
+    <div class="ind-card">
+      <div class="ind-label">Moving averages</div>
+      <div style="display:flex;justify-content:space-between;gap:12px;margin-top:4px">
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">MA 20</div>
+          <div class="ind-val" id="ind-ma20" style="font-size:16px">—</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">MA 50</div>
+          <div class="ind-val" id="ind-ma50" style="font-size:16px">—</div>
+        </div>
+      </div>
+      <div class="ind-sub" id="ind-ma-sub">—</div>
     </div>
   </div>
 </div>
 
-<!-- ARCHITECTURE -->
-<section id="architecture">
-  <span class="sec-tag">Architecture</span>
-  <h2 class="sec-h">Infrastructure diagram</h2>
-  <p class="sec-sub">Data flow across both cloud regions — ingestion, cross-cloud auth, inference, and archival.</p>
-  <div class="arch-box">
-    <div class="ci-row">
-      <div class="ci-box"><div class="ci-name">GitHub Actions</div><div class="ci-desc">terraform apply · OIDC · zero stored credentials</div></div>
-    </div>
-    <div class="ci-arms">
-      <div class="ci-arm l"><span class="ci-tip"></span></div>
-      <div></div>
-      <div class="ci-arm r"><span class="ci-tip"></span></div>
-    </div>
-    <div class="arch-regions">
-      <div class="arch-region aws">
-        <span class="arch-rl">AWS · eu-north-1</span>
-        <div class="arch-svc a"><div class="arch-svc-name">EventBridge</div><div class="arch-svc-desc">rate(1 minute)</div></div>
-        <div class="arch-arrow">↓</div>
-        <div class="arch-svc a"><div class="arch-svc-name">Lambda · private subnet</div><div class="arch-svc-desc">Binance API · RSI · ATR · MA</div></div>
-        <div class="arch-divider"></div>
-        <div class="arch-svc dim"><div class="arch-svc-name">VPC + security group</div><div class="arch-svc-desc">443 egress only</div></div>
-        <div class="arch-svc dim"><div class="arch-svc-name">CloudWatch · S3</div><div class="arch-svc-desc">logs · state</div></div>
-      </div>
-      <div class="arch-bridge">
-        <div class="arch-bridge-lbl">WIF · keyless</div>
-        <div class="arch-bridge-line"></div>
-        <div class="arch-bridge-tip"></div>
-      </div>
-      <div class="arch-region gcp">
-        <span class="arch-rl">GCP · europe-west1</span>
-        <div class="arch-svc g"><div class="arch-svc-name">Pub/Sub</div><div class="arch-svc-desc">topic · push sub · DLQ</div></div>
-        <div class="arch-arrow">↓</div>
-        <div class="arch-svc g"><div class="arch-svc-name">Cloud Function · VPC</div><div class="arch-svc-desc">inference · confidence · stop loss</div></div>
-        <div class="arch-arrow">↓</div>
-        <div class="arch-svc g"><div class="arch-svc-name">BigQuery</div><div class="arch-svc-desc">signals · day partitioned</div></div>
-        <div class="arch-divider"></div>
-        <div class="arch-svc dim"><div class="arch-svc-name">Firewall · VPC connector</div><div class="arch-svc-desc">private networking</div></div>
-      </div>
-    </div>
-    <div class="arch-outputs">
-      <div class="arch-out-col"><div class="arch-out-stem"></div><div class="arch-out-box b"><div class="arch-svc-name" style="font-size:12px">This page</div><div class="arch-svc-desc">live Binance data</div></div></div>
-      <div></div>
-      <div class="arch-out-col"><div class="arch-out-stem"></div><div class="arch-out-box r"><div class="arch-svc-name" style="font-size:12px">Telegram</div><div class="arch-svc-desc">alerts when conf ≥ 80%</div></div></div>
-    </div>
-    <div class="arch-legend">
-      <div class="leg"><div class="leg-line f"></div>data flow</div>
-      <div class="leg"><div class="leg-line a"></div>cross-cloud auth (WIF)</div>
-      <div class="leg"><div class="leg-sq"></div>supporting infra</div>
-    </div>
-  </div>
-</section>
-
-<div style="border-top:1px solid var(--border)">
 <footer>
-  <div class="footer-name">Anas Almana</div>
-  <div class="footer-links">
-    <a href="https://github.com/AlmanaAnas/multi-cloud-trading-bot" target="_blank">GitHub</a>
-    <a href="https://linkedin.com" target="_blank">LinkedIn</a>
-  </div>
-  <div class="footer-note">AWS · GCP · Terraform · GitHub Actions</div>
+  <div class="footer-logo">Trade<span>Signal</span></div>
+  <div class="footer-note">Not financial advice · For informational purposes only</div>
 </footer>
-</div>
 
 <script>
-// ─────────────────────────────────────────────────────────────
-// All data comes from Binance public API — no key, no backend.
-// The same calculations run in the Lambda function.
-// Updates every 60 seconds.
-// ─────────────────────────────────────────────────────────────
+const REFRESH = 60000;
 
-const REFRESH_MS = 60000;
-let history = []; // keep last 10 computed signals in memory
+// State per asset
+const assets = {
+  BTCUSDT:  { name:'BTC/USDT',  history:[], prevPrice:null },
+  SOLUSDT:  { name:'SOL/USDT',  history:[], prevPrice:null },
+  XLMUSDT:  { name:'XLM/USDT',  history:[], prevPrice:null },
+  POLUSDT:  { name:'POL/USDT',  history:[], prevPrice:null },
+};
 
-function fmt(n, decimals = 2) {
-  return n.toLocaleString("en-US", {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+let activeSymbol = 'BTCUSDT';
+
+function selectAsset(el){
+  document.querySelectorAll('.asset-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  activeSymbol = el.dataset.symbol;
+  document.getElementById('feed-title').textContent = 'SIGNAL HISTORY · '+el.dataset.name+' · 1m';
+  renderActive();
+  refresh(activeSymbol);
 }
 
-function fmtPrice(n) {
-  return "$" + fmt(n, 2);
+// ── helpers ──
+function dp(sym){
+  // decimal places per asset
+  if(sym==='BTCUSDT') return 2;
+  if(sym==='SOLUSDT') return 2;
+  return 4;
 }
-
-function fmtTime(d) {
-  return d.toISOString().slice(11,19) + " UTC";
+function fmt(n, d){
+  return n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 }
+function fmtP(n, sym){ return '$'+fmt(n, dp(sym)); }
+function fmtTime(d){ return d.toISOString().slice(11,19)+' UTC'; }
 
-// ── same RSI calculation as Lambda ──
-function calcRSI(closes, period = 14) {
-  if (closes.length < period + 1) return 50;
-  let gains = 0, losses = 0;
-  for (let i = closes.length - period; i < closes.length; i++) {
-    const d = closes[i] - closes[i - 1];
-    if (d > 0) gains += d; else losses -= d;
-  }
-  const ag = gains / period, al = losses / period;
-  if (al === 0) return 100;
-  return 100 - (100 / (1 + ag / al));
+function calcRSI(c, p=14){
+  if(c.length<p+1) return 50;
+  let g=0,l=0;
+  for(let i=c.length-p;i<c.length;i++){const d=c[i]-c[i-1];d>0?g+=d:l-=d;}
+  const ag=g/p,al=l/p;
+  if(al===0) return 100;
+  return 100-(100/(1+ag/al));
 }
-
-// ── same ATR calculation as Lambda ──
-function calcATR(highs, lows, closes, period = 14) {
-  if (closes.length < period + 1) return 0;
-  let sum = 0;
-  for (let i = closes.length - period; i < closes.length; i++) {
-    sum += Math.max(
-      highs[i] - lows[i],
-      Math.abs(highs[i] - closes[i - 1]),
-      Math.abs(lows[i]  - closes[i - 1])
-    );
-  }
-  return sum / period;
+function calcATR(h,l,c,p=14){
+  if(c.length<p+1) return 0;
+  let s=0;
+  for(let i=c.length-p;i<c.length;i++)
+    s+=Math.max(h[i]-l[i],Math.abs(h[i]-c[i-1]),Math.abs(l[i]-c[i-1]));
+  return s/p;
 }
-
-// ── RSI-based signal (same fallback logic as Cloud Function) ──
-// NOTE: this is a simple rule, not a trained ML model.
-// The real model will replace this once trained.
-function computeSignal(rsi, price, atr) {
-  let direction, confidence;
-  if      (rsi < 25) { direction = "LONG";  confidence = 85 + (25 - rsi);      }
-  else if (rsi < 35) { direction = "LONG";  confidence = 65 + (35 - rsi) * 2;  }
-  else if (rsi > 75) { direction = "SHORT"; confidence = 85 + (rsi - 75);      }
-  else if (rsi > 65) { direction = "SHORT"; confidence = 65 + (rsi - 65) * 2;  }
-  else               { direction = "LONG";  confidence = 45 + Math.random() * 10; }
-
-  confidence = Math.min(confidence, 99);
-  const stopLossLong  = price - (atr * 1.5);
-  const stopLossShort = price + (atr * 1.5);
-
-  return {
-    direction,
-    confidence: parseFloat(confidence.toFixed(1)),
-    stopLoss: direction === "LONG" ? stopLossLong : stopLossShort,
-  };
+function computeSignal(rsi, price, atr){
+  let dir, conf;
+  if(rsi<25){dir='LONG';conf=88+(25-rsi);}
+  else if(rsi<35){dir='LONG';conf=68+(35-rsi)*2;}
+  else if(rsi>75){dir='SHORT';conf=88+(rsi-75);}
+  else if(rsi>65){dir='SHORT';conf=68+(rsi-65)*2;}
+  else{dir=rsi<50?'LONG':'SHORT';conf=45+Math.random()*12;}
+  conf=Math.min(parseFloat(conf.toFixed(1)),99);
+  const sl=dir==='LONG'?price-(atr*1.5):price+(atr*1.5);
+  return{dir,conf,sl:parseFloat(sl.toFixed(dp(activeSymbol)+2))};
 }
+function confClass(c){ return c>=80?'high':c>=60?'med':'low'; }
 
-async function refresh() {
-  try {
-    // Fetch ticker (price, 24h change, high, low)
-    const [tickerRes, klinesRes] = await Promise.all([
-      fetch("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT"),
-      fetch("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=100")
+// ── fetch one asset ──
+async function refresh(symbol){
+  try{
+    const [tickerRes,klinesRes]=await Promise.all([
+      fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`),
+      fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m&limit=100`)
     ]);
+    const ticker=await tickerRes.json();
+    const klines=await klinesRes.json();
 
-    const ticker = await tickerRes.json();
-    const klines = await klinesRes.json();
+    const closes=klines.map(k=>parseFloat(k[4]));
+    const highs=klines.map(k=>parseFloat(k[2]));
+    const lows=klines.map(k=>parseFloat(k[3]));
+    const price=parseFloat(ticker.lastPrice);
+    const change=parseFloat(ticker.priceChangePercent);
+    const rsi=calcRSI(closes);
+    const atr=calcATR(highs,lows,closes);
+    const ma20=closes.slice(-20).reduce((a,b)=>a+b,0)/20;
+    const ma50=closes.slice(-50).reduce((a,b)=>a+b,0)/50;
+    const sig=computeSignal(rsi,price,atr);
+    const now=new Date();
+    const d=dp(symbol);
+    const asset=assets[symbol];
+    const name=asset.name;
 
-    const closes = klines.map(k => parseFloat(k[4]));
-    const highs  = klines.map(k => parseFloat(k[2]));
-    const lows   = klines.map(k => parseFloat(k[3]));
+    // Update tab price
+    document.getElementById(`tab-price-${symbol}`).textContent='$'+fmt(price,d);
+    const tce=document.getElementById(`tab-change-${symbol}`);
+    tce.textContent=(change>=0?'▲':' ▼')+Math.abs(change).toFixed(2)+'%';
+    tce.className='asset-change '+(change>=0?'up':'down');
 
-    const price  = parseFloat(ticker.lastPrice);
-    const change = parseFloat(ticker.priceChangePercent);
-    const rsi    = calcRSI(closes, 14);
-    const atr    = calcATR(highs, lows, closes, 14);
-    const ma20   = closes.slice(-20).reduce((a,b) => a+b,0) / 20;
-    const ma50   = closes.slice(-50).reduce((a,b) => a+b,0) / 50;
-    const sig    = computeSignal(rsi, price, atr);
+    // Store in history
+    asset.history.unshift({time:fmtTime(now),name,dir:sig.dir,conf:sig.conf,price,sl:sig.sl,rsi,atr,ma20,ma50,change});
+    if(asset.history.length>10) asset.history.pop();
+    asset.prevPrice=price;
+    asset.lastData={price,change,rsi,atr,ma20,ma50,sig,now,d,name};
 
-    // ── update hero price ──
-    document.getElementById("hero-price").textContent = fmtPrice(price);
+    if(symbol===activeSymbol) renderActive();
 
-    // ── update metrics panel ──
-    document.getElementById("m-price").textContent = fmtPrice(price);
-    const changeEl = document.getElementById("m-change");
-    changeEl.textContent  = (change >= 0 ? "▲ +" : "▼ ") + fmt(change, 2) + "% (24h)";
-    changeEl.style.color  = change >= 0 ? "var(--green)" : "var(--red)";
-
-    const rsiEl = document.getElementById("m-rsi");
-    rsiEl.textContent   = fmt(rsi, 1);
-    rsiEl.style.color   = rsi < 30 ? "var(--green)" : rsi > 70 ? "var(--red)" : "var(--ink)";
-    document.getElementById("m-rsi-bar").style.width      = rsi + "%";
-    document.getElementById("m-rsi-bar").style.background = rsi < 30 ? "var(--green)" : rsi > 70 ? "var(--red)" : "var(--ink3)";
-    document.getElementById("m-rsi-label").textContent    = rsi < 30 ? "Oversold — potential buy zone" : rsi > 70 ? "Overbought — potential sell zone" : "Neutral zone";
-
-    document.getElementById("m-atr").textContent  = fmtPrice(atr);
-    document.getElementById("m-ma20").textContent = fmtPrice(ma20);
-    document.getElementById("m-ma50").textContent = fmtPrice(ma50);
-
-    const trendEl = document.getElementById("m-trend");
-    if (ma20 > ma50) {
-      trendEl.textContent = "MA20 above MA50 — short-term uptrend";
-      trendEl.style.color = "var(--green)";
-    } else {
-      trendEl.textContent = "MA20 below MA50 — short-term downtrend";
-      trendEl.style.color = "var(--red)";
-    }
-
-    document.getElementById("m-sl").textContent = fmtPrice(sig.stopLoss);
-
-    // ── add to signal history and render the feed ──
-    history.unshift({
-      time:       fmtTime(new Date()),
-      direction:  sig.direction,
-      confidence: sig.confidence,
-      stopLoss:   sig.stopLoss,
-    });
-    if (history.length > 10) history.pop();
-
-    const listEl = document.getElementById("signals-list");
-    listEl.innerHTML = history.map(s => `
-      <div class="signal-row">
-        <div class="sr-time">${s.time}</div>
-        <div class="sr-pair">BTC/USDT</div>
-        <div class="${s.direction === 'LONG' ? 'sr-long' : 'sr-short'}" style="text-align:center">${s.direction}</div>
-        <div class="sr-conf">${s.confidence.toFixed(1)}%</div>
-        <div class="sr-sl">${fmtPrice(s.stopLoss)}</div>
-      </div>
-    `).join("");
-
-    document.getElementById("feed-updated").textContent =
-      "Live from Binance · updated " + fmtTime(new Date()) + " · refreshes every 60s";
-
-  } catch(e) {
-    console.error("Refresh failed:", e);
-    document.getElementById("feed-updated").textContent = "Fetch error — retrying in 60s";
+  }catch(e){
+    console.error(symbol,e);
   }
 }
 
-refresh();
-setInterval(refresh, REFRESH_MS);
+function renderActive(){
+  const asset=assets[activeSymbol];
+  if(!asset.lastData) return;
+  const{price,change,rsi,atr,ma20,ma50,sig,now,d,name}=asset.lastData;
+
+  // Price card
+  document.getElementById('pc-pair').textContent=name.replace('/',' / ');
+  const pe=document.getElementById('pc-price');
+  if(asset.prevPrice!==null){
+    pe.style.color=price>asset.prevPrice?'var(--green)':price<asset.prevPrice?'var(--red)':'var(--text)';
+    setTimeout(()=>pe.style.color='var(--text)',1500);
+  }
+  pe.textContent='$'+fmt(price,d);
+  const ce=document.getElementById('pc-change');
+  ce.textContent=(change>=0?'▲ +':'▼ ')+fmt(change,2)+'% (24h)';
+  ce.className='pc-change '+(change>=0?'up':'down');
+  document.getElementById('pc-rsi').textContent=fmt(rsi,1)+(rsi<30?' ↑':rsi>70?' ↓':'');
+  document.getElementById('pc-atr').textContent='$'+fmt(atr,d);
+  document.getElementById('pc-ma20').textContent='$'+fmt(ma20,d);
+  document.getElementById('pc-ma50').textContent='$'+fmt(ma50,d);
+  document.getElementById('pc-updated').textContent='Updated '+fmtTime(now)+' · auto-refresh 60s';
+
+  // Current signal card
+  const dir=document.getElementById('cs-dir');
+  dir.textContent=sig.dir;
+  dir.className='cs-direction '+(sig.dir==='LONG'?'long':'short');
+  const badge=document.getElementById('cs-badge');
+  badge.textContent=sig.dir;
+  badge.className='cs-badge '+(sig.dir==='LONG'?'long':'short');
+  const fill=document.getElementById('cs-conf-fill');
+  fill.style.width=sig.conf+'%';
+  fill.style.background=sig.conf>=80?'var(--green)':sig.conf>=60?'var(--yellow)':'var(--muted)';
+  document.getElementById('cs-conf-val').textContent=sig.conf.toFixed(1)+'%';
+  document.getElementById('cs-entry').textContent='$'+fmt(price,d);
+  document.getElementById('cs-sl').textContent='$'+fmt(sig.sl,d);
+  document.getElementById('cs-risk').textContent='$'+fmt(atr*1.5,d);
+  const trendEl=document.getElementById('cs-trend');
+  if(ma20>ma50){trendEl.textContent='Uptrend ↑';trendEl.style.color='var(--green)';}
+  else{trendEl.textContent='Downtrend ↓';trendEl.style.color='var(--red)';}
+
+  // Alert banner
+  const ab=document.getElementById('alert-box');
+  ab.className='alert-box'+(sig.dir==='SHORT'?' bear':'');
+  document.getElementById('alert-icon').textContent=sig.dir==='LONG'?'🟢':'🔴';
+  const confLabel=sig.conf>=80?`<span class="hl-${sig.dir==='LONG'?'bull':'bear'}">HIGH CONFIDENCE</span>`:sig.conf>=60?`<span style="color:var(--yellow)">MODERATE</span>`:`<span style="color:var(--muted)">LOW CONFIDENCE</span>`;
+  document.getElementById('alert-text').innerHTML=`${confLabel} ${sig.dir} · ${name} · Entry <span class="hl-${sig.dir==='LONG'?'bull':'bear'}">$${fmt(price,d)}</span> · Stop $${fmt(sig.sl,d)}`;
+  document.getElementById('alert-time').textContent=fmtTime(now);
+
+  // Indicators
+  const rsiEl=document.getElementById('ind-rsi');
+  rsiEl.textContent=fmt(rsi,1);
+  rsiEl.className='ind-val '+(rsi<30?'bullish':rsi>70?'bearish':'neutral');
+  document.getElementById('ind-rsi-bar').style.width=rsi+'%';
+  document.getElementById('ind-rsi-bar').style.background=rsi<30?'var(--green)':rsi>70?'var(--red)':'var(--yellow)';
+  document.getElementById('ind-rsi-sub').textContent=rsi<30?'Oversold — potential buy zone':rsi>70?'Overbought — potential sell zone':'Neutral zone';
+  document.getElementById('ind-atr').textContent='$'+fmt(atr,d);
+  document.getElementById('ind-ma20').textContent='$'+fmt(ma20,d);
+  document.getElementById('ind-ma50').textContent='$'+fmt(ma50,d);
+  const maSub=document.getElementById('ind-ma-sub');
+  if(ma20>ma50){maSub.textContent='MA20 above MA50 — bullish momentum';maSub.style.color='var(--green)';}
+  else{maSub.textContent='MA20 below MA50 — bearish momentum';maSub.style.color='var(--red)';}
+
+  // Signal history feed
+  document.getElementById('signal-list').innerHTML=asset.history.map(s=>`
+    <div class="sig-row">
+      <div class="sig-time">${s.time.slice(0,8)}</div>
+      <div class="sig-pair">${s.name}</div>
+      <div><span class="${s.dir==='LONG'?'sig-long':'sig-short'}">${s.dir}</span></div>
+      <div class="sig-conf ${confClass(s.conf)}">${s.conf.toFixed(1)}%</div>
+      <div class="sig-price">$${fmt(s.price,d)}</div>
+      <div class="sig-sl">$${fmt(s.sl,d)}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('feed-note').textContent='Live from Binance · '+fmtTime(now)+' · auto-refresh every 60s';
+}
+
+// ── init — fetch all assets immediately ──
+async function refreshAll(){
+  await Promise.all(Object.keys(assets).map(sym=>refresh(sym)));
+}
+
+refreshAll();
+setInterval(refreshAll, REFRESH);
 </script>
 </body>
 </html>
