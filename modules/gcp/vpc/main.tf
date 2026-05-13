@@ -57,8 +57,9 @@ resource "google_vpc_access_connector" "main" {
   name          = "${var.project_name}-connector-${var.environment}"
   project       = var.project_id
   region        = var.region
-  network       = google_compute_network.main.id
-  ip_cidr_range = var.connector_subnet_cidr
+  network       = google_compute_network.main.name
+  ip_cidr_range = "10.8.0.0/28"
+
   min_instances = 2
   max_instances = 3
   machine_type  = "e2-micro"
@@ -67,7 +68,6 @@ resource "google_vpc_access_connector" "main" {
     create = "10m"
   }
 }
-
 # ── Firewall rules ─────────────────────────────────────────
 # GCP uses target tags to scope rules to specific resources
 # Cloud Function gets tag: cloud-function-${environment}
