@@ -2,6 +2,25 @@
 
 # ── AWS ────────────────────────────────────────────────────
 
+
+module "aws_vpc" {
+  source              = "../../modules/aws/vpc"
+  project_name        = var.project_name
+  environment         = var.environment
+  availability_zone   = "${var.aws_region}a"
+  tags                = local.common_tags
+}
+
+module "gcp_vpc" {
+  source       = "../../modules/gcp/vpc"
+  project_id   = var.gcp_project_id
+  project_name = var.project_name
+  environment  = var.environment
+  region       = var.gcp_region
+  labels       = local.common_labels
+}
+
+
 module "aws_iam_oidc" {
   source      = "../../modules/aws/iam-oidc"
   github_org  = var.github_org
@@ -17,6 +36,10 @@ module "aws_lambda" {
   iam_role_arn    = module.aws_iam_oidc.lambda_role_arn
   memory_mb       = 256
   timeout_seconds = 30
+
+  # VPC — Lambda now runs in the private subnet
+  subnet_ids         = [module.aws_vpc.private_subnet_id]
+  security_group_ids = [module.aws_vpc.lambda_security_group_id]
 
   environment_variables = {
     GCP_PROJECT_ID = var.gcp_project_id
@@ -62,6 +85,10 @@ module "gcp_signals_function" {
   min_instances         = 0
   max_instances         = 3
   service_account_email = module.gcp_iam_wif.cloud_function_sa_email
+
+  # VPC — Cloud Function connects through the VPC connector
+  vpc_connector_id = module.gcp_vpc.connector_id
+  network_tags     = [module.gcp_vpc.cloud_function_tag]
 
   environment_variables = {
     GCP_PROJECT_ID = var.gcp_project_id

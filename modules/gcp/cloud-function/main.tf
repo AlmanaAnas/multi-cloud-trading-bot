@@ -44,13 +44,16 @@ resource "google_cloudfunctions2_function" "this" {
   }
 
 service_config {
-    min_instance_count    = var.min_instances
-    max_instance_count    = var.max_instances
-    available_memory      = "${var.memory_mb}M"
-    timeout_seconds       = var.timeout_seconds
-    service_account_email = var.service_account_email
-    environment_variables = var.environment_variables
-  }
+  min_instance_count               = var.min_instances
+  max_instance_count               = var.max_instances
+  available_memory                 = "${var.memory_mb}M"
+  timeout_seconds                  = var.timeout_seconds
+  service_account_email            = var.service_account_email
+  environment_variables            = var.environment_variables
+  vpc_connector                    = var.vpc_connector_id
+  vpc_connector_egress_settings    = "PRIVATE_RANGES_ONLY"
+  ingress_settings                 = "ALLOW_INTERNAL_ONLY"
+}
 
   labels = var.labels
 }

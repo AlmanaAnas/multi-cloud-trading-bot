@@ -1,18 +1,12 @@
 # app/lambda/ingest/main.py
 #
-# Triggered every 1 minute by EventBridge.
+# AWS Lambda function — triggered every 1 minute by EventBridge
 #
-# What it does:
-#   1. Calls Binance public API — no key required
-#   2. Gets last 100 one-minute candles for BTC/USDT
-#   3. Calculates RSI, ATR, MA20, MA50
-#   4. Publishes a JSON payload to GCP Pub/Sub
-#
-# Where the prices come from:
-#   Binance public REST API — api.binance.com
-#   Endpoint: GET /api/v3/klines
-#   No API key needed. Free. Public.
-#   Returns: [timestamp, open, high, low, close, volume, ...]
+# DATA SOURCE: Binance Public REST API
+#   URL: https://api.binance.com/api/v3/klines
+#   No API key required. Free public endpoint.
+#   Returns 1-minute OHLCV candles for BTCUSDT.
+#   Current BTC price: ~$80,000-$82,000 (May 2026)
 
 import os
 import json
@@ -22,73 +16,63 @@ import urllib.request
 import urllib.parse
 from datetime import datetime, timezone
 
-import boto3
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# ── environment variables ──────────────────────────────────
-TRADING_PAIR    = os.environ.get("TRADING_PAIR", "BTC/USDT")
-GCP_PROJECT_ID  = os.environ.get("GCP_PROJECT_ID")
-PUBSUB_TOPIC    = os.environ.get("PUBSUB_TOPIC")
-ENVIRONMENT     = os.environ.get("ENVIRONMENT", "dev")
-
-# Binance uses BTCUSDT (no slash)
-BINANCE_SYMBOL  = TRADING_PAIR.replace("/", "")
-BINANCE_API     = "https://api.binance.com/api/v3/klines"
+TRADING_PAIR   = os.environ.get("TRADING_PAIR", "BTC/USDT")
+GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "")
+PUBSUB_TOPIC   = os.environ.get("PUBSUB_TOPIC", "")
+ENVIRONMENT    = os.environ.get("ENVIRONMENT", "dev")
+BINANCE_SYMBOL = TRADING_PAIR.replace("/", "")  # BTCUSDT
+BINANCE_URL    = "https://api.binance.com/api/v3/klines"
 
 
-# ── Step 1: Fetch prices from Binance ─────────────────────
-# No API key needed. Binance provides free public market data.
-# We request 100 one-minute candles for BTC/USDT.
+# ─────────────────────────────────────────────
+# STEP 1: Fetch live BTC prices from Binance
+#
+# Binance public API — no key needed.
+# Returns last 100 one-minute candles.
 # Each candle = [open_time, open, high, low, close, volume, ...]
+# ─────────────────────────────────────────────
 
 def fetch_candles(symbol: str, interval: str = "1m", limit: int = 100) -> list:
-    """
-    Fetch OHLCV candles from Binance public API.
-    Returns a list of candles, each as a list of values.
-    """
     params = urllib.parse.urlencode({
         "symbol":   symbol,
         "interval": interval,
         "limit":    limit,
     })
-
-    url = f"{BINANCE_API}?{params}"
-    logger.info(f"Fetching {limit} candles from Binance: {symbol} {interval}")
-
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": "Mozilla/5.0"}
-    )
-
+    url = f"{BINANCE_URL}?{params}"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=10) as resp:
-        data = json.loads(resp.read().decode())
+        candles = json.loads(resp.read().decode())
+    logger.info(f"Fetched {len(candles)} candles · latest close=${float(candles[-1][4]):,.2f}")
+    return candles
 
-    logger.info(f"Received {len(data)} candles")
-    return data
 
-
-# ── Step 2: Compute indicators ─────────────────────────────
+# ─────────────────────────────────────────────
+# STEP 2: Compute technical indicators
+#
+# RSI  — is the market overbought or oversold?
+# ATR  — how much is price moving? (volatility)
+# MA20 — 20-period moving average (short-term trend)
+# MA50 — 50-period moving average (long-term trend)
+# ─────────────────────────────────────────────
 
 def compute_rsi(closes: list, period: int = 14) -> float:
     """
-    RSI — Relative Strength Index
-    Tells us if the market is overbought (RSI > 70) or oversold (RSI < 30).
-    Calculated from the last `period` closing prices.
+    RSI = 100 - (100 / (1 + RS))
+    RS = average gain / average loss over last `period` candles
+    RSI < 30 = oversold (potential buy signal)
+    RSI > 70 = overbought (potential sell signal)
     """
     if len(closes) < period + 1:
-        return 50.0  # not enough data — return neutral
+        return 50.0
 
     gains, losses = [], []
-    for i in range(1, period + 1):
-        diff = closes[-period + i - 1] - closes[-period + i - 2]
-        if diff > 0:
-            gains.append(diff)
-            losses.append(0)
-        else:
-            gains.append(0)
-            losses.append(abs(diff))
+    for i in range(-period, 0):
+        diff = closes[i] - closes[i - 1]
+        gains.append(max(diff, 0))
+        losses.append(max(-diff, 0))
 
     avg_gain = sum(gains) / period
     avg_loss = sum(losses) / period
@@ -96,31 +80,26 @@ def compute_rsi(closes: list, period: int = 14) -> float:
     if avg_loss == 0:
         return 100.0
 
-    rs  = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return round(rsi, 2)
+    rs = avg_gain / avg_loss
+    return round(100 - (100 / (1 + rs)), 2)
 
 
 def compute_atr(highs: list, lows: list, closes: list, period: int = 14) -> float:
     """
-    ATR — Average True Range
-    Measures how much the price is moving — i.e. volatility.
-    Used to set dynamic stop losses: stop_loss = price - (ATR x 1.5)
+    ATR = average of True Range over `period` candles
+    True Range = max(high-low, abs(high-prev_close), abs(low-prev_close))
+    Used for stop loss: stop_loss = entry_price - (ATR * 1.5)
+    At BTC ~$81,000 with normal volatility, ATR is typically $500-$1,500
     """
     if len(closes) < period + 1:
         return 0.0
 
     true_ranges = []
-    for i in range(1, period + 1):
-        idx   = len(closes) - period + i - 1
-        high  = highs[idx]
-        low   = lows[idx]
-        prev_close = closes[idx - 1]
-
+    for i in range(-period, 0):
         tr = max(
-            high - low,
-            abs(high - prev_close),
-            abs(low  - prev_close)
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i]  - closes[i - 1]),
         )
         true_ranges.append(tr)
 
@@ -128,158 +107,131 @@ def compute_atr(highs: list, lows: list, closes: list, period: int = 14) -> floa
 
 
 def compute_ma(closes: list, period: int) -> float:
-    """
-    Moving Average — average of the last `period` closing prices.
-    MA20 = short-term trend
-    MA50 = long-term trend
-    If price > MA50, we're in an uptrend.
-    """
+    """Simple moving average of last `period` closes."""
     if len(closes) < period:
-        return closes[-1] if closes else 0.0
+        return closes[-1]
     return round(sum(closes[-period:]) / period, 2)
 
 
-# ── Step 3: Parse candles and build payload ────────────────
+# ─────────────────────────────────────────────
+# STEP 3: Build the payload
+#
+# Parses raw Binance candle format:
+# [0] open_time (ms unix)
+# [1] open price
+# [2] high price
+# [3] low price
+# [4] close price
+# [5] volume (BTC)
+# ─────────────────────────────────────────────
 
 def build_payload(candles: list) -> dict:
-    """
-    Parse the raw Binance candle data and compute all features.
-    Binance candle format:
-      [0]  open_time (ms)
-      [1]  open price
-      [2]  high price
-      [3]  low price
-      [4]  close price
-      [5]  volume
-      [6]  close_time
-      ...  (we only need 0-5)
-    """
     opens   = [float(c[1]) for c in candles]
     highs   = [float(c[2]) for c in candles]
     lows    = [float(c[3]) for c in candles]
     closes  = [float(c[4]) for c in candles]
     volumes = [float(c[5]) for c in candles]
 
-    latest_close  = closes[-1]
-    latest_candle = candles[-1]
+    price = closes[-1]
+    rsi   = compute_rsi(closes)
+    atr   = compute_atr(highs, lows, closes)
+    ma20  = compute_ma(closes, 20)
+    ma50  = compute_ma(closes, 50)
 
-    rsi  = compute_rsi(closes)
-    atr  = compute_atr(highs, lows, closes)
-    ma20 = compute_ma(closes, 20)
-    ma50 = compute_ma(closes, 50)
+    # Stop loss calculation (for reference — actual signal computed in Cloud Function)
+    # LONG stop loss  = price - (ATR * 1.5)
+    # SHORT stop loss = price + (ATR * 1.5)
+    # At BTC ~$81,000 and ATR ~$800: stop loss ≈ $81,000 - $1,200 = $79,800
+    stop_loss_long  = round(price - (atr * 1.5), 2)
+    stop_loss_short = round(price + (atr * 1.5), 2)
 
-    # Features passed to the ML model
-    # Order matters — must match training data
-    features = [rsi, atr, ma20, ma50, latest_close]
-
-    # Dedup ID — SHA256 of symbol + candle open time
-    # Prevents the Cloud Function from processing duplicates
-    open_time = str(latest_candle[0])
-    dedup_id  = hashlib.sha256(
-        f"{BINANCE_SYMBOL}{open_time}".encode()
+    # Dedup ID — prevents Cloud Function processing the same candle twice
+    # Uses the candle's open timestamp (unique per minute)
+    dedup_id = hashlib.sha256(
+        f"{BINANCE_SYMBOL}{candles[-1][0]}".encode()
     ).hexdigest()[:16]
 
-    payload = {
-        "timestamp"   : datetime.now(timezone.utc).isoformat(),
-        "trading_pair": TRADING_PAIR,
-        "price"       : round(latest_close, 2),
-        "open"        : round(float(latest_candle[1]), 2),
-        "high"        : round(float(latest_candle[2]), 2),
-        "low"         : round(float(latest_candle[3]), 2),
-        "volume"      : round(volumes[-1], 4),
-        "rsi"         : rsi,
-        "atr"         : atr,
-        "ma20"        : ma20,
-        "ma50"        : ma50,
-        "features"    : features,
-        "environment" : ENVIRONMENT,
-        "dedup_id"    : dedup_id,
-        "source"      : "binance",
+    return {
+        "timestamp"       : datetime.now(timezone.utc).isoformat(),
+        "trading_pair"    : TRADING_PAIR,
+        "price"           : round(price, 2),
+        "open"            : round(opens[-1], 2),
+        "high"            : round(highs[-1], 2),
+        "low"             : round(lows[-1], 2),
+        "volume_btc"      : round(volumes[-1], 6),
+        "rsi"             : rsi,
+        "atr"             : atr,
+        "ma20"            : ma20,
+        "ma50"            : ma50,
+        "stop_loss_long"  : stop_loss_long,
+        "stop_loss_short" : stop_loss_short,
+        "features"        : [rsi, atr, ma20, ma50, price],
+        "environment"     : ENVIRONMENT,
+        "dedup_id"        : dedup_id,
+        "source"          : "binance_public_api",
     }
 
-    return payload
 
-
-# ── Step 4: Publish to GCP Pub/Sub ────────────────────────
-# Lambda authenticates to GCP using Workload Identity Federation.
-# No GCP service account key is stored anywhere.
-# Lambda gets a short-lived token from STS and exchanges it for a GCP token.
+# ─────────────────────────────────────────────
+# STEP 4: Publish to GCP Pub/Sub
+#
+# Uses google-cloud-pubsub.
+# Auth via Workload Identity Federation — no keys stored.
+# ─────────────────────────────────────────────
 
 def publish_to_pubsub(payload: dict) -> None:
-    """
-    Publish the payload to GCP Pub/Sub.
-    Uses google-cloud-pubsub which handles WIF auth automatically
-    when GOOGLE_APPLICATION_CREDENTIALS is not set but
-    the execution environment has the right AWS identity.
-    """
+    if not GCP_PROJECT_ID or not PUBSUB_TOPIC:
+        logger.warning("GCP_PROJECT_ID or PUBSUB_TOPIC not set — skipping publish")
+        logger.info(f"PAYLOAD PREVIEW: price={payload['price']} rsi={payload['rsi']}")
+        return
+
     try:
         from google.cloud import pubsub_v1
-        from google.auth import aws as google_aws_auth
-        from google.auth.transport.requests import Request as GoogleRequest
-
         publisher  = pubsub_v1.PublisherClient()
         topic_path = publisher.topic_path(GCP_PROJECT_ID, PUBSUB_TOPIC)
         data       = json.dumps(payload).encode("utf-8")
 
-        future = publisher.publish(
+        future     = publisher.publish(
             topic_path,
-            data       = data,
+            data         = data,
             trading_pair = payload["trading_pair"],
             environment  = payload["environment"],
             dedup_id     = payload["dedup_id"],
         )
-
         message_id = future.result(timeout=15)
-        logger.info(f"Published to {topic_path} — message_id={message_id}")
+        logger.info(f"Published · message_id={message_id}")
 
     except ImportError:
-        # google-cloud-pubsub not installed — log and continue
-        # This happens when running locally without dependencies
-        logger.warning("google-cloud-pubsub not installed — payload logged only")
-        logger.info(f"PAYLOAD: {json.dumps(payload, indent=2)}")
+        logger.warning("google-cloud-pubsub not installed — logging payload only")
+        logger.info(json.dumps(payload, indent=2))
 
 
-# ── Lambda entry point ─────────────────────────────────────
+# ─────────────────────────────────────────────
+# Lambda entry point
+# ─────────────────────────────────────────────
 
 def handler(event, context):
-    """
-    Main function. Called every minute by EventBridge.
+    logger.info(f"=== Ingestion start === {TRADING_PAIR} · {ENVIRONMENT}")
 
-    Flow:
-      EventBridge → Lambda (here) → Binance API → compute features → Pub/Sub → Cloud Function
-    """
-    logger.info(f"=== Ingestion started === pair={TRADING_PAIR} env={ENVIRONMENT}")
+    candles = fetch_candles(BINANCE_SYMBOL)
+    payload = build_payload(candles)
 
-    try:
-        # 1. Fetch live BTC/USDT prices from Binance
-        candles = fetch_candles(BINANCE_SYMBOL, interval="1m", limit=100)
+    logger.info(
+        f"BTC=${payload['price']:,.2f} | "
+        f"RSI={payload['rsi']} | "
+        f"ATR=${payload['atr']:,.2f} | "
+        f"SL(L)=${payload['stop_loss_long']:,.2f} | "
+        f"MA20=${payload['ma20']:,.2f}"
+    )
 
-        # 2. Compute all technical indicators
-        payload = build_payload(candles)
+    publish_to_pubsub(payload)
 
-        logger.info(
-            f"BTC price=${payload['price']:,.2f} | "
-            f"RSI={payload['rsi']} | "
-            f"ATR={payload['atr']} | "
-            f"MA20={payload['ma20']:,.2f} | "
-            f"MA50={payload['ma50']:,.2f}"
-        )
-
-        # 3. Publish to GCP Pub/Sub
-        publish_to_pubsub(payload)
-
-        return {
-            "statusCode": 200,
-            "body": json.dumps({
-                "status"     : "ok",
-                "pair"       : TRADING_PAIR,
-                "price"      : payload["price"],
-                "rsi"        : payload["rsi"],
-                "dedup_id"   : payload["dedup_id"],
-                "timestamp"  : payload["timestamp"],
-            })
-        }
-
-    except Exception as e:
-        logger.error(f"Ingestion failed: {e}", exc_info=True)
-        raise
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "price"          : payload["price"],
+            "rsi"            : payload["rsi"],
+            "stop_loss_long" : payload["stop_loss_long"],
+            "dedup_id"       : payload["dedup_id"],
+        })
+    }

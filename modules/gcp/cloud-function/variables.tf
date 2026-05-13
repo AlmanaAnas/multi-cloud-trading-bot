@@ -79,3 +79,15 @@ variable "labels" {
   type        = map(string)
   default     = {}
 }
+
+variable "vpc_connector_id" {
+  description = "Serverless VPC Access Connector ID — from vpc module output"
+  type        = string
+  default     = ""
+}
+
+variable "network_tags" {
+  description = "Network tags for firewall rules — from vpc module output"
+  type        = list(string)
+  default     = []
+}
