@@ -30,7 +30,7 @@ variable "private_subnet_cidr" {
 variable "connector_subnet_cidr" {
   description = "Must be /28 — Serverless VPC Connector requirement"
   type        = string
-  default     = "10.1.3.0/28"
+  default     = "10.1.4.0/28"
 }
 
 variable "labels" {
