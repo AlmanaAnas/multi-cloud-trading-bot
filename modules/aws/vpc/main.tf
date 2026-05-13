@@ -92,7 +92,7 @@ resource "aws_network_acl" "private" {
   subnet_ids = [aws_subnet.private.id]
   tags       = merge(var.tags, { Name = "${var.project_name}-nacl-private-${var.environment}" })
 
-  # Allow outbound HTTPS — Lambda calling Binance, Pub/Sub, VPC endpoints
+  # Allow all outbound HTTPS - Binance API, Pub/Sub, VPC endpoints
   egress {
     rule_no    = 100
     action     = "allow"
@@ -149,7 +149,7 @@ resource "aws_network_acl" "private" {
 
 resource "aws_security_group" "lambda" {
   name        = "${var.project_name}-lambda-sg-${var.environment}"
-  description = "Lambda function — outbound HTTPS only"
+  description = "Lambda function - outbound HTTPS only"
   vpc_id      = aws_vpc.main.id
   tags        = merge(var.tags, { Name = "${var.project_name}-lambda-sg-${var.environment}" })
 }
