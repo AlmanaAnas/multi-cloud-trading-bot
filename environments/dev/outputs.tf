@@ -33,7 +33,3 @@ output "bigquery_dataset_id" {
 }
 
 
-output "api_url" {
-  description = "Landing page API URL — set this as API_BASE_URL in index.html"
-  value       = module.landing_api.api_url
-}
