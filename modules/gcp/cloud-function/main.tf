@@ -31,6 +31,8 @@ resource "google_cloudfunctions2_function" "this" {
   project  = var.project_id
   location = var.region
 
+  depends_on = [var.vpc_connector_id]
+
   build_config {
     runtime     = var.runtime
     entry_point = var.entry_point
