@@ -4,8 +4,6 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 # ── GitHub Actions OIDC provider ──────────────────────────
-# Allows GitHub Actions to authenticate to AWS without
-# any long-lived access keys stored anywhere
 
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
@@ -15,7 +13,6 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 # ── GitHub Actions IAM role ───────────────────────────────
-# GitHub Actions assumes this role to run terraform apply
 
 data "aws_iam_policy_document" "github_actions_assume" {
   statement {
@@ -32,7 +29,6 @@ data "aws_iam_policy_document" "github_actions_assume" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Locks the role to your specific repo — no other repo can assume it
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
@@ -54,7 +50,7 @@ resource "aws_iam_role_policy" "github_actions" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-   {
+      {
         Sid    = "LambdaAndEvents"
         Effect = "Allow"
         Action = [
@@ -119,7 +115,6 @@ resource "aws_iam_role_policy" "github_actions" {
 }
 
 # ── Lambda execution role ─────────────────────────────────
-# The role the Lambda function itself runs as at runtime
 
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
@@ -138,13 +133,17 @@ resource "aws_iam_role" "lambda" {
   tags               = var.tags
 }
 
-# Basic execution — only CloudWatch Logs write access
 resource "aws_iam_role_policy_attachment" "lambda_basic" {
   role       = aws_iam_role.lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# SSM read — Lambda fetches API keys from Parameter Store at runtime
+# VPC access -- Lambda needs this to run inside a VPC
+resource "aws_iam_role_policy_attachment" "lambda_vpc" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 resource "aws_iam_role_policy" "lambda_ssm" {
   name = "ssm-read"
   role = aws_iam_role.lambda.id
@@ -162,7 +161,6 @@ resource "aws_iam_role_policy" "lambda_ssm" {
   })
 }
 
-# STS — Lambda needs this for Workload Identity Federation token exchange with GCP
 resource "aws_iam_role_policy" "lambda_sts" {
   name = "sts-wif"
   role = aws_iam_role.lambda.id
@@ -178,8 +176,6 @@ resource "aws_iam_role_policy" "lambda_sts" {
 }
 
 # ── Grafana CloudWatch reader role ────────────────────────
-# Grafana Cloud assumes this role to read CloudWatch metrics
-# No access keys needed — uses AssumeRole with external ID
 
 data "aws_iam_policy_document" "grafana_assume" {
   statement {
