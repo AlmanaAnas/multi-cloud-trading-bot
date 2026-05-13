@@ -104,3 +104,11 @@ locals {
     managed_by  = "terraform"
   }
 }
+
+module "landing" {
+  source      = "../../modules/gcp/landing"
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  bucket_name = "${var.project_name}-landing-${var.environment}"
+  source_file = "../../app/landing/index.html"
+}

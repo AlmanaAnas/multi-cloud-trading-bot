@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Cloud Trading Bot — Anas Almana</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --aws:#FF9900; --gcp:#4285F4; --green:#00D084; --red:#FF4757;
+  --bg:#080C10; --surface:#0E1318; --card:#131920; --border:#1C2530;
+  --text:#E8EEF4; --muted:#5A6A7A; --dim:#2A3A4A;
+  --font-display:'Syne',sans-serif; --font-mono:'JetBrains Mono',monospace;
+}
+
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-display);overflow-x:hidden}
+
+/* ── NOISE OVERLAY ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:.4;
+}
+
+/* ── GRID BACKGROUND ── */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(28,37,48,.5) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(28,37,48,.5) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;z-index:0;
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0 48px;height:64px;
+  background:rgba(8,12,16,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.nav-brand{font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+.nav-links{display:flex;gap:32px}
+.nav-links a{font-size:12px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-badge{
+  font-family:var(--font-mono);font-size:11px;
+  background:rgba(0,208,132,.1);border:1px solid rgba(0,208,132,.25);
+  color:var(--green);padding:4px 12px;border-radius:20px;
+  display:flex;align-items:center;gap:6px;
+}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--green);
+  animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+/* ── HERO ── */
+.hero{
+  position:relative;z-index:1;
+  min-height:100vh;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  text-align:center;padding:120px 24px 80px;
+  overflow:hidden;
+}
+.hero-glow{
+  position:absolute;top:20%;left:50%;transform:translateX(-50%);
+  width:600px;height:400px;
+  background:radial-gradient(ellipse,rgba(66,133,244,.08) 0%,rgba(255,153,0,.05) 50%,transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:20px;
+  animation:fadeUp .8s ease both;
+}
+.hero h1{
+  font-size:clamp(40px,7vw,80px);font-weight:800;line-height:1.05;
+  letter-spacing:-.02em;margin-bottom:24px;
+  animation:fadeUp .8s ease .1s both;
+}
+.hero h1 .accent-aws{color:var(--aws)}
+.hero h1 .accent-gcp{color:var(--gcp)}
+.hero-sub{
+  font-size:clamp(14px,2vw,17px);color:var(--muted);font-weight:400;
+  max-width:560px;line-height:1.7;margin-bottom:40px;
+  animation:fadeUp .8s ease .2s both;
+}
+.hero-tags{
+  display:flex;flex-wrap:wrap;gap:10px;justify-content:center;
+  margin-bottom:48px;animation:fadeUp .8s ease .3s both;
+}
+.tag{
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  padding:5px 14px;border-radius:4px;letter-spacing:.05em;
+}
+.tag-aws{background:rgba(255,153,0,.1);border:1px solid rgba(255,153,0,.2);color:var(--aws)}
+.tag-gcp{background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.2);color:var(--gcp)}
+.tag-tf{background:rgba(124,86,255,.1);border:1px solid rgba(124,86,255,.2);color:#9b72ff}
+.tag-ci{background:rgba(0,208,132,.1);border:1px solid rgba(0,208,132,.2);color:var(--green)}
+
+.hero-cta{display:flex;gap:14px;animation:fadeUp .8s ease .4s both}
+.btn{
+  font-family:var(--font-display);font-size:13px;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;
+  padding:13px 28px;border-radius:6px;text-decoration:none;
+  transition:all .2s;cursor:pointer;border:none;
+}
+.btn-primary{background:var(--text);color:var(--bg)}
+.btn-primary:hover{background:#fff;transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-outline:hover{border-color:var(--dim);color:var(--text);transform:translateY(-1px)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── STATS BAR ── */
+.stats-bar{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.stat{
+  padding:28px 32px;border-right:1px solid var(--border);
+  display:flex;flex-direction:column;gap:6px;
+}
+.stat:last-child{border-right:none}
+.stat-val{font-size:32px;font-weight:800;letter-spacing:-.02em}
+.stat-val.green{color:var(--green)}
+.stat-val.aws{color:var(--aws)}
+.stat-val.gcp{color:var(--gcp)}
+.stat-lbl{font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.05em}
+
+/* ── SECTIONS ── */
+section{position:relative;z-index:1;padding:96px 48px;max-width:1200px;margin:0 auto}
+.section-label{
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:16px;display:flex;align-items:center;gap:12px;
+}
+.section-label::before{content:'';display:block;width:24px;height:1px;background:var(--muted)}
+.section-title{font-size:clamp(28px,4vw,42px);font-weight:800;letter-spacing:-.02em;margin-bottom:16px}
+.section-sub{font-size:15px;color:var(--muted);line-height:1.7;max-width:540px}
+
+/* ── HOW IT WORKS ── */
+.pipeline{margin-top:64px;position:relative}
+.pipeline-track{
+  position:absolute;top:32px;left:32px;right:32px;height:1px;
+  background:linear-gradient(90deg,var(--aws),var(--green),var(--gcp));
+  opacity:.3;
+}
+.pipeline-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative}
+.step{
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;padding:0 12px;
+}
+.step-icon{
+  width:64px;height:64px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;margin-bottom:16px;position:relative;z-index:1;
+  border:1px solid var(--border);background:var(--card);
+  font-family:var(--font-mono);font-weight:600;font-size:13px;
+}
+.step-icon.aws{border-color:rgba(255,153,0,.3);color:var(--aws)}
+.step-icon.cross{border-color:rgba(0,208,132,.3);color:var(--green)}
+.step-icon.gcp{border-color:rgba(66,133,244,.3);color:var(--gcp)}
+.step-name{font-size:13px;font-weight:700;margin-bottom:6px}
+.step-desc{font-size:11px;color:var(--muted);font-family:var(--font-mono);line-height:1.6}
+.step-cloud{
+  font-size:9px;font-family:var(--font-mono);letter-spacing:.1em;
+  text-transform:uppercase;margin-top:8px;padding:2px 8px;
+  border-radius:3px;
+}
+.step-cloud.aws{background:rgba(255,153,0,.08);color:var(--aws)}
+.step-cloud.gcp{background:rgba(66,133,244,.08);color:var(--gcp)}
+.step-cloud.both{background:rgba(0,208,132,.08);color:var(--green)}
+
+/* ── TECH STACK GRID ── */
+.tech-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1px;background:var(--border);
+  border:1px solid var(--border);border-radius:12px;overflow:hidden;
+  margin-top:56px;
+}
+.tech-card{
+  background:var(--card);padding:32px 28px;
+  transition:background .2s;
+}
+.tech-card:hover{background:#161e27}
+.tech-card-icon{font-size:28px;margin-bottom:14px}
+.tech-card-title{font-size:15px;font-weight:700;margin-bottom:8px}
+.tech-card-desc{font-size:12px;color:var(--muted);line-height:1.7;font-family:var(--font-mono)}
+.tech-badge{
+  display:inline-block;font-family:var(--font-mono);font-size:10px;
+  padding:2px 8px;border-radius:3px;margin-top:12px;
+}
+
+/* ── SIGNALS FEED ── */
+.signals-section{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.signals-wrap{max-width:1200px;margin:0 auto;padding:96px 48px}
+.signals-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:56px}
+.signal-feed{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;
+}
+.feed-header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+}
+.feed-live{display:flex;align-items:center;gap:6px;color:var(--green)}
+.signal-row{
+  display:grid;grid-template-columns:1fr auto auto auto;
+  gap:16px;align-items:center;
+  padding:14px 20px;border-bottom:1px solid rgba(28,37,48,.6);
+  font-family:var(--font-mono);font-size:12px;
+}
+.signal-row:last-child{border-bottom:none}
+.sig-pair{font-weight:500;color:var(--text)}
+.sig-time{color:var(--muted);font-size:11px}
+.sig-dir{
+  padding:3px 10px;border-radius:4px;font-size:10px;
+  font-weight:600;letter-spacing:.08em;
+}
+.sig-long{background:rgba(0,208,132,.1);color:var(--green);border:1px solid rgba(0,208,132,.2)}
+.sig-short{background:rgba(255,71,87,.1);color:var(--red);border:1px solid rgba(255,71,87,.2)}
+.sig-conf{color:var(--text);font-weight:500}
+
+.metrics-panel{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:20px;
+}
+.metric-row{display:flex;justify-content:space-between;align-items:center}
+.metric-name{font-size:12px;color:var(--muted);font-family:var(--font-mono)}
+.metric-val{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.metric-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.metric-fill{height:100%;border-radius:2px;transition:width 1s ease}
+
+/* ── INFRA SECTION ── */
+.infra-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:56px}
+.infra-cloud{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;
+}
+.infra-header{
+  padding:16px 20px;display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--border);
+}
+.infra-dot{width:10px;height:10px;border-radius:50%}
+.infra-dot.aws{background:var(--aws)}
+.infra-dot.gcp{background:var(--gcp)}
+.infra-cloud-name{font-size:13px;font-weight:700}
+.infra-region{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-left:auto}
+.infra-resources{padding:8px 0}
+.infra-resource{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 20px;
+  font-size:12px;
+}
+.infra-resource:hover{background:rgba(255,255,255,.02)}
+.res-name{color:var(--text)}
+.res-type{font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+.res-status{display:flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:10px;color:var(--green)}
+.res-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+/* ── SECURITY SECTION ── */
+.security-section{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.security-wrap{max-width:1200px;margin:0 auto;padding:96px 48px}
+.security-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:56px}
+.sec-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:28px;
+}
+.sec-icon{font-size:24px;margin-bottom:16px}
+.sec-title{font-size:14px;font-weight:700;margin-bottom:8px}
+.sec-desc{font-size:12px;color:var(--muted);line-height:1.7;font-family:var(--font-mono)}
+.sec-check{display:flex;align-items:center;gap:8px;margin-top:16px;
+  font-family:var(--font-mono);font-size:11px;color:var(--green)}
+
+/* ── ARCHITECTURE DIAGRAM ── */
+.arch-section{background:var(--bg)}
+.arch-wrap{max-width:1200px;margin:0 auto;padding:96px 48px}
+.arch-diagram{
+  margin-top:56px;border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;background:var(--card);
+  padding:40px 32px;
+}
+.arch-regions{display:grid;grid-template-columns:1fr 80px 1fr;align-items:start;gap:0}
+.arch-region{
+  border:1px dashed;border-radius:10px;padding:20px 16px;position:relative;
+}
+.arch-region.aws{border-color:rgba(255,153,0,.3);background:rgba(255,153,0,.03)}
+.arch-region.gcp{border-color:rgba(66,133,244,.3);background:rgba(66,133,244,.03)}
+.arch-label{
+  position:absolute;top:-10px;left:14px;
+  font-family:var(--font-mono);font-size:10px;font-weight:500;
+  padding:1px 10px;border-radius:3px;
+}
+.arch-region.aws .arch-label{background:var(--card);color:var(--aws);border:1px solid rgba(255,153,0,.3)}
+.arch-region.gcp .arch-label{background:var(--card);color:var(--gcp);border:1px solid rgba(66,133,244,.3)}
+.arch-svc{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:9px 12px;margin-bottom:7px;
+}
+.arch-svc:last-child{margin-bottom:0}
+.arch-svc.aws-s{border-left:2px solid var(--aws)}
+.arch-svc.gcp-s{border-left:2px solid var(--gcp)}
+.arch-svc.dim{border-left:2px solid var(--dim);opacity:.5}
+.arch-svc-name{font-size:12px;font-weight:600}
+.arch-svc-desc{font-size:10px;color:var(--muted);font-family:var(--font-mono);margin-top:2px}
+.arch-arrow{text-align:center;color:rgba(88,166,255,.4);font-size:13px;
+  height:20px;display:flex;align-items:center;justify-content:center}
+.arch-bridge{
+  display:flex;flex-direction:column;align-items:center;
+  padding-top:44px;gap:0;
+}
+.bridge-lbl{font-size:9px;font-family:var(--font-mono);color:var(--green);
+  writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.1em;margin-bottom:4px}
+.bridge-line{width:1px;flex:1;
+  background:repeating-linear-gradient(to bottom,var(--green) 0,var(--green) 4px,transparent 4px,transparent 9px)}
+.bridge-tip{width:0;height:0;border-left:4px solid transparent;
+  border-right:4px solid transparent;border-top:6px solid var(--green)}
+.arch-divider{height:1px;background:var(--border);opacity:.3;margin:14px 0 12px}
+.arch-outputs{display:grid;grid-template-columns:1fr 80px 1fr;margin-top:16px}
+.arch-out-col{display:flex;flex-direction:column;align-items:center}
+.arch-out-stem{width:1px;height:16px;
+  background:repeating-linear-gradient(to bottom,var(--dim) 0,var(--dim) 3px,transparent 3px,transparent 7px)}
+.arch-out-box{width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:6px;padding:9px 12px}
+.arch-out-box.blue{border-left:2px solid var(--gcp)}
+.arch-out-box.orange{border-left:2px solid rgba(255,71,87,.6)}
+
+/* ── CI/CD section within arch ── */
+.arch-top{display:flex;justify-content:center;margin-bottom:0}
+.arch-ci{background:var(--surface);border:1px solid var(--border);
+  border-top:2px solid var(--dim);border-radius:8px;
+  padding:10px 32px;text-align:center}
+.arch-ci-name{font-size:13px;font-weight:600;color:var(--muted)}
+.arch-ci-desc{font-size:10px;color:var(--dim);font-family:var(--font-mono);margin-top:2px}
+.arch-deploy-arms{display:grid;grid-template-columns:1fr 80px 1fr;height:28px}
+.arch-arm{position:relative}
+.arch-arm.left{border-right:1px dashed var(--dim);border-bottom:1px dashed var(--dim);margin-left:50%}
+.arch-arm.right{border-left:1px dashed var(--dim);border-bottom:1px dashed var(--dim);margin-right:50%}
+.arch-arm-tip{position:absolute;bottom:-5px;width:0;height:0;
+  border-left:3px solid transparent;border-right:3px solid transparent;border-top:5px solid var(--dim)}
+.arch-arm.left .arch-arm-tip{left:-3px}
+.arch-arm.right .arch-arm-tip{right:-3px}
+
+/* ── LEGEND ── */
+.arch-legend{display:flex;gap:20px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+.arch-leg{display:flex;align-items:center;gap:7px;font-size:11px;font-family:var(--font-mono);color:var(--muted)}
+.arch-leg-line{width:22px;height:2px}
+.arch-leg-line.f{background:rgba(88,166,255,.4)}
+.arch-leg-line.a{background:repeating-linear-gradient(to right,var(--green) 0,var(--green) 4px,transparent 4px,transparent 8px)}
+.arch-leg-line.d{background:repeating-linear-gradient(to right,var(--dim) 0,var(--dim) 3px,transparent 3px,transparent 7px)}
+.arch-leg-sq{width:10px;height:10px;border-radius:2px;background:var(--surface);border:1px solid var(--dim);opacity:.6}
+
+/* ── FOOTER ── */
+footer{
+  position:relative;z-index:1;
+  border-top:1px solid var(--border);
+  padding:48px;display:flex;justify-content:space-between;align-items:center;
+  max-width:1200px;margin:0 auto;width:100%;
+}
+.footer-brand{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.footer-links{display:flex;gap:24px}
+.footer-links a{font-family:var(--font-mono);font-size:11px;color:var(--muted);text-decoration:none;
+  letter-spacing:.05em;transition:color .2s}
+.footer-links a:hover{color:var(--text)}
+.footer-copy{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  nav{padding:0 20px}
+  .nav-links{display:none}
+  section,.signals-wrap,.security-wrap,.arch-wrap{padding:64px 20px}
+  .stats-bar{grid-template-columns:1fr 1fr}
+  .stat{border-right:none;border-bottom:1px solid var(--border)}
+  .pipeline-steps{grid-template-columns:1fr;gap:24px}
+  .pipeline-track{display:none}
+  .tech-grid{grid-template-columns:1fr}
+  .signals-grid{grid-template-columns:1fr}
+  .infra-grid{grid-template-columns:1fr}
+  .security-grid{grid-template-columns:1fr}
+  footer{flex-direction:column;gap:24px;text-align:center}
+  .hero-cta{flex-direction:column;align-items:center}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">Anas Almana</div>
+  <div class="nav-links">
+    <a href="#how-it-works">How it works</a>
+    <a href="#stack">Stack</a>
+    <a href="#signals">Signals</a>
+    <a href="#infrastructure">Infrastructure</a>
+    <a href="#architecture">Architecture</a>
+  </div>
+  <div class="nav-badge">
+    <span class="pulse"></span>
+    Live — eu-north-1 / europe-west1
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">Cloud Infrastructure Portfolio Project</div>
+  <h1>
+    <span class="accent-aws">Multi-Cloud</span><br>
+    Trading Bot
+  </h1>
+  <p class="hero-sub">
+    A production-grade event-driven pipeline spanning AWS and GCP —
+    provisioned entirely with Terraform, deployed via GitHub Actions,
+    with zero long-lived credentials anywhere in the system.
+  </p>
+  <div class="hero-tags">
+    <span class="tag tag-aws">AWS Lambda</span>
+    <span class="tag tag-aws">EventBridge</span>
+    <span class="tag tag-gcp">GCP Cloud Functions</span>
+    <span class="tag tag-gcp">Pub/Sub</span>
+    <span class="tag tag-gcp">BigQuery</span>
+    <span class="tag tag-tf">Terraform IaC</span>
+    <span class="tag tag-ci">GitHub Actions CI/CD</span>
+  </div>
+  <div class="hero-cta">
+    <a href="https://github.com/AlmanaAnas/multi-cloud-trading-bot" class="btn btn-primary" target="_blank">View on GitHub</a>
+    <a href="#how-it-works" class="btn btn-outline">See how it works</a>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat">
+    <div class="stat-val green">41</div>
+    <div class="stat-lbl">Resources deployed</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val aws">2</div>
+    <div class="stat-lbl">Cloud providers</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val gcp">1 min</div>
+    <div class="stat-lbl">Ingestion interval</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val green">0</div>
+    <div class="stat-lbl">Long-lived credentials</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title">End-to-end data pipeline</h2>
+  <p class="section-sub">Every minute, the system fetches live market data, engineers features, runs ML inference across two cloud providers, and archives the result — automatically.</p>
+
+  <div class="pipeline">
+    <div class="pipeline-track"></div>
+    <div class="pipeline-steps">
+      <div class="step">
+        <div class="step-icon aws">EB</div>
+        <div class="step-name">Trigger</div>
+        <div class="step-desc">EventBridge fires a rate(1 minute) schedule rule</div>
+        <div class="step-cloud aws">AWS</div>
+      </div>
+      <div class="step">
+        <div class="step-icon aws">λ</div>
+        <div class="step-name">Ingest</div>
+        <div class="step-desc">Lambda fetches OHLCV and computes RSI, ATR, MA</div>
+        <div class="step-cloud aws">AWS</div>
+      </div>
+      <div class="step">
+        <div class="step-icon cross">WIF</div>
+        <div class="step-name">Bridge</div>
+        <div class="step-desc">Keyless cross-cloud auth via Workload Identity Federation</div>
+        <div class="step-cloud both">Cross-cloud</div>
+      </div>
+      <div class="step">
+        <div class="step-icon gcp">Fn</div>
+        <div class="step-name">Infer</div>
+        <div class="step-desc">Cloud Function runs ML model and calculates confidence</div>
+        <div class="step-cloud gcp">GCP</div>
+      </div>
+      <div class="step">
+        <div class="step-icon gcp">BQ</div>
+        <div class="step-name">Archive</div>
+        <div class="step-desc">Signal written to BigQuery. Alert fires if confidence &gt; 80%</div>
+        <div class="step-cloud gcp">GCP</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section id="stack" style="padding-top:0">
+  <div class="section-label">Stack</div>
+  <h2 class="section-title">Built with the right tools</h2>
+  <p class="section-sub">Every technology was chosen for a specific reason — not just for the project, but to demonstrate production infrastructure thinking.</p>
+
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tech-card-icon">🏗️</div>
+      <div class="tech-card-title">Terraform IaC</div>
+      <div class="tech-card-desc">Reusable modules for AWS and GCP. Remote state in S3 with DynamoDB locking. Environment isolation between dev and prod. Every resource declared as code.</div>
+      <div class="tech-badge tag-tf">modules/aws · modules/gcp · modules/shared</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-card-icon">🔐</div>
+      <div class="tech-card-title">Zero credentials stored</div>
+      <div class="tech-card-desc">GitHub Actions authenticates to both clouds via OIDC. Lambda authenticates to GCP Pub/Sub via Workload Identity Federation. No access keys. No service account files.</div>
+      <div class="tech-badge tag-ci">OIDC + Workload Identity Federation</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-card-icon">⚡</div>
+      <div class="tech-card-title">Serverless compute</div>
+      <div class="tech-card-desc">AWS Lambda (Python 3.11) for data ingestion. GCP Cloud Function 2nd gen for ML inference. Both scale to zero when idle — zero cost outside active runs.</div>
+      <div class="tech-badge tag-aws">Lambda</div>
+      <div class="tech-badge tag-gcp" style="margin-left:6px">Cloud Functions</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-card-icon">📨</div>
+      <div class="tech-card-title">Event-driven messaging</div>
+      <div class="tech-card-desc">GCP Pub/Sub with push subscription, dead-letter topic, and exponential backoff retry. Fan-out topology allows new consumers to subscribe without touching the producer.</div>
+      <div class="tech-badge tag-gcp">Pub/Sub · DLQ · push sub</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-card-icon">🚀</div>
+      <div class="tech-card-title">GitHub Actions CI/CD</div>
+      <div class="tech-card-desc">terraform plan on every PR. terraform apply on merge to main. Manual destroy workflow for one-click teardown. Infrastructure as code deployed as code.</div>
+      <div class="tech-badge tag-ci">plan · apply · destroy</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-card-icon">📊</div>
+      <div class="tech-card-title">BigQuery analytics</div>
+      <div class="tech-card-desc">All trading signals archived to a day-partitioned BigQuery table. Schema enforced at the Terraform level. Ready for model retraining and Looker Studio dashboards.</div>
+      <div class="tech-badge tag-gcp">day partitioned · streaming insert</div>
+    </div>
+  </div>
+</section>
+
+<!-- SIGNALS FEED -->
+<div class="signals-section" id="signals">
+  <div class="signals-wrap">
+    <div class="section-label">Live output</div>
+    <h2 class="section-title">Signal feed &amp; system metrics</h2>
+    <p class="section-sub">Simulated output showing what the pipeline produces every minute when running against live market data.</p>
+
+    <div class="signals-grid">
+      <div class="signal-feed">
+        <div class="feed-header">
+          <span>BTC/USDT · 1m signals</span>
+          <span class="feed-live"><span class="pulse"></span> Live</span>
+        </div>
+        <div class="signal-row">
+          <div><div class="sig-pair">BTC/USDT</div><div class="sig-time">14:32 UTC</div></div>
+          <span class="sig-dir sig-long">LONG</span>
+          <div class="sig-conf">87.4%</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">SL $103,240</div>
+        </div>
+        <div class="signal-row">
+          <div><div class="sig-pair">BTC/USDT</div><div class="sig-time">14:31 UTC</div></div>
+          <span class="sig-dir sig-short">SHORT</span>
+          <div class="sig-conf">62.1%</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">SL $104,890</div>
+        </div>
+        <div class="signal-row">
+          <div><div class="sig-pair">BTC/USDT</div><div class="sig-time">14:30 UTC</div></div>
+          <span class="sig-dir sig-long">LONG</span>
+          <div class="sig-conf">91.2%</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">SL $102,180</div>
+        </div>
+        <div class="signal-row">
+          <div><div class="sig-pair">BTC/USDT</div><div class="sig-time">14:29 UTC</div></div>
+          <span class="sig-dir sig-long">LONG</span>
+          <div class="sig-conf">78.5%</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">SL $102,640</div>
+        </div>
+        <div class="signal-row">
+          <div><div class="sig-pair">BTC/USDT</div><div class="sig-time">14:28 UTC</div></div>
+          <span class="sig-dir sig-short">SHORT</span>
+          <div class="sig-conf">55.3%</div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">SL $105,120</div>
+        </div>
+      </div>
+
+      <div class="metrics-panel">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:8px">System metrics</div>
+
+        <div>
+          <div class="metric-row">
+            <span class="metric-name">Lambda invocations (24h)</span>
+            <span class="metric-val" style="color:var(--aws);font-size:16px">1,440</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:95%;background:var(--aws)"></div></div>
+        </div>
+
+        <div>
+          <div class="metric-row">
+            <span class="metric-name">Lambda error rate</span>
+            <span class="metric-val" style="color:var(--green);font-size:16px">0.0%</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:2%;background:var(--green)"></div></div>
+        </div>
+
+        <div>
+          <div class="metric-row">
+            <span class="metric-name">Pub/Sub DLQ depth</span>
+            <span class="metric-val" style="color:var(--green);font-size:16px">0</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:1%;background:var(--green)"></div></div>
+        </div>
+
+        <div>
+          <div class="metric-row">
+            <span class="metric-name">Signals archived (24h)</span>
+            <span class="metric-val" style="color:var(--gcp);font-size:16px">1,440</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:90%;background:var(--gcp)"></div></div>
+        </div>
+
+        <div>
+          <div class="metric-row">
+            <span class="metric-name">High-confidence alerts</span>
+            <span class="metric-val" style="color:var(--green);font-size:16px">23</span>
+          </div>
+          <div class="metric-bar"><div class="metric-fill" style="width:16%;background:var(--green)"></div></div>
+        </div>
+
+        <div style="margin-top:8px;padding-top:16px;border-top:1px solid var(--border)">
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Infrastructure cost (demo run)</div>
+          <div style="font-size:28px;font-weight:800;color:var(--green);margin-top:4px">$0.00</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px">Free tier — all resources</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INFRASTRUCTURE -->
+<section id="infrastructure">
+  <div class="section-label">Infrastructure</div>
+  <h2 class="section-title">41 resources across 2 clouds</h2>
+  <p class="section-sub">Every resource provisioned by Terraform. No manual clicks. Reproducible across environments.</p>
+
+  <div class="infra-grid">
+    <div class="infra-cloud">
+      <div class="infra-header">
+        <div class="infra-dot aws"></div>
+        <div class="infra-cloud-name">Amazon Web Services</div>
+        <div class="infra-region">eu-north-1</div>
+      </div>
+      <div class="infra-resources">
+        <div class="infra-resource"><div><div class="res-name">Lambda function</div><div class="res-type">trading-bot-ingest-dev</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">EventBridge rule</div><div class="res-type">rate(1 minute)</div></div><div class="res-status"><span class="res-dot"></span>enabled</div></div>
+        <div class="infra-resource"><div><div class="res-name">IAM OIDC provider</div><div class="res-type">token.actions.githubusercontent.com</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">IAM roles</div><div class="res-type">github-actions-dev · lambda-ingest-dev</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">S3 state bucket</div><div class="res-type">tf-state-trading-bot-almanaanas</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">DynamoDB lock table</div><div class="res-type">tf-state-lock</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">CloudWatch alarm</div><div class="res-type">Lambda error rate</div></div><div class="res-status"><span class="res-dot"></span>ok</div></div>
+      </div>
+    </div>
+
+    <div class="infra-cloud">
+      <div class="infra-header">
+        <div class="infra-dot gcp"></div>
+        <div class="infra-cloud-name">Google Cloud Platform</div>
+        <div class="infra-region">europe-west1</div>
+      </div>
+      <div class="infra-resources">
+        <div class="infra-resource"><div><div class="res-name">Cloud Function 2nd gen</div><div class="res-type">trading-bot-signals-dev</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">Pub/Sub topic</div><div class="res-type">trading-bot-market-data-dev</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">Pub/Sub DLQ</div><div class="res-type">trading-bot-market-data-dev-dlq</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">BigQuery dataset</div><div class="res-type">trading_bot_dev · signals table</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">Workload Identity Pool</div><div class="res-type">github-pool-dev</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">Service accounts</div><div class="res-type">terraform · lambda-runtime · cloud-function</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+        <div class="infra-resource"><div><div class="res-name">GCS buckets</div><div class="res-type">Terraform state · function source</div></div><div class="res-status"><span class="res-dot"></span>active</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<div class="security-section" id="security">
+  <div class="security-wrap">
+    <div class="section-label">Security</div>
+    <h2 class="section-title">Zero credentials stored anywhere</h2>
+    <p class="section-sub">Every authentication boundary in the system uses short-lived tokens. No access keys. No service account JSON files. No secrets in environment variables.</p>
+
+    <div class="security-grid">
+      <div class="sec-card">
+        <div class="sec-icon">🔑</div>
+        <div class="sec-title">GitHub → AWS</div>
+        <div class="sec-desc">GitHub Actions assumes an IAM role via OIDC. The role trust policy is scoped to this exact repository — no other repo can assume it.</div>
+        <div class="sec-check">✓ No AWS_ACCESS_KEY_ID stored</div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">🌉</div>
+        <div class="sec-title">GitHub → GCP</div>
+        <div class="sec-desc">Workload Identity Federation maps GitHub's OIDC token to a GCP service account. The provider is locked to this repository by attribute condition.</div>
+        <div class="sec-check">✓ No service account key file</div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">⚡</div>
+        <div class="sec-title">Lambda → GCP Pub/Sub</div>
+        <div class="sec-desc">Lambda exchanges its AWS identity for a short-lived GCP token via Workload Identity Federation at runtime. The token expires in 1 hour.</div>
+        <div class="sec-check">✓ Cross-cloud keyless auth</div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">🛡️</div>
+        <div class="sec-title">Least privilege IAM</div>
+        <div class="sec-desc">Every role has exactly the permissions it needs — nothing more. Lambda can only publish to Pub/Sub. The GitHub role can only manage the specific services used.</div>
+        <div class="sec-check">✓ No AdministratorAccess on runtime roles</div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">🗄️</div>
+        <div class="sec-title">State security</div>
+        <div class="sec-desc">Terraform state is encrypted at rest in S3 (AES-256). Public access blocked at the bucket level. DynamoDB prevents concurrent state corruption.</div>
+        <div class="sec-check">✓ Encrypted · locked · private</div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">💣</div>
+        <div class="sec-title">Clean teardown</div>
+        <div class="sec-desc">A manual workflow_dispatch GitHub Action destroys all 41 resources in both clouds with one click. No lingering resources, no forgotten buckets, no ongoing costs.</div>
+        <div class="sec-check">✓ terraform destroy on demand</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE DIAGRAM -->
+<div class="arch-section" id="architecture">
+  <div class="arch-wrap">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">Infrastructure diagram</h2>
+    <p class="section-sub">Full system layout across both cloud regions — data flow, cross-cloud authentication, and supporting infrastructure.</p>
+
+    <div class="arch-diagram">
+      <div class="arch-top">
+        <div class="arch-ci">
+          <div class="arch-ci-name">GitHub Actions</div>
+          <div class="arch-ci-desc">terraform apply · OIDC auth · zero stored credentials</div>
+        </div>
+      </div>
+      <div class="arch-deploy-arms">
+        <div class="arch-arm left"><span class="arch-arm-tip"></span></div>
+        <div></div>
+        <div class="arch-arm right"><span class="arch-arm-tip"></span></div>
+      </div>
+
+      <div class="arch-regions">
+        <div class="arch-region aws">
+          <span class="arch-label">AWS · eu-north-1</span>
+          <div class="arch-svc aws-s"><div class="arch-svc-name">EventBridge</div><div class="arch-svc-desc">rate(1 minute) schedule</div></div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-svc aws-s"><div class="arch-svc-name">Lambda</div><div class="arch-svc-desc">OHLCV · RSI · ATR · MA</div></div>
+          <div class="arch-divider"></div>
+          <div class="arch-svc dim"><div class="arch-svc-name">S3 + DynamoDB</div><div class="arch-svc-desc">Terraform state &amp; lock</div></div>
+          <div class="arch-svc dim"><div class="arch-svc-name">CloudWatch</div><div class="arch-svc-desc">logs · alarms</div></div>
+        </div>
+
+        <div class="arch-bridge">
+          <div class="bridge-lbl">WIF · keyless</div>
+          <div class="bridge-line"></div>
+          <div class="bridge-tip"></div>
+        </div>
+
+        <div class="arch-region gcp">
+          <span class="arch-label">GCP · europe-west1</span>
+          <div class="arch-svc gcp-s"><div class="arch-svc-name">Pub/Sub</div><div class="arch-svc-desc">market-data topic · DLQ</div></div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-svc gcp-s"><div class="arch-svc-name">Cloud Function</div><div class="arch-svc-desc">ML inference · confidence · stop-loss</div></div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-svc gcp-s"><div class="arch-svc-name">BigQuery</div><div class="arch-svc-desc">signals table · day partitioned</div></div>
+          <div class="arch-divider"></div>
+          <div class="arch-svc dim"><div class="arch-svc-name">GCS + Cloud Monitoring</div><div class="arch-svc-desc">model storage · metrics · alerts</div></div>
+        </div>
+      </div>
+
+      <div class="arch-outputs">
+        <div class="arch-out-col">
+          <div class="arch-out-stem"></div>
+          <div class="arch-out-box blue"><div class="arch-svc-name" style="font-size:12px">Looker Studio</div><div class="arch-svc-desc">live dashboard · BigQuery source</div></div>
+        </div>
+        <div></div>
+        <div class="arch-out-col">
+          <div class="arch-out-stem"></div>
+          <div class="arch-out-box orange"><div class="arch-svc-name" style="font-size:12px">Telegram alert</div><div class="arch-svc-desc">fires when confidence &gt; 80%</div></div>
+        </div>
+      </div>
+
+      <div class="arch-legend">
+        <div class="arch-leg"><div class="arch-leg-line f"></div>data flow</div>
+        <div class="arch-leg"><div class="arch-leg-line a"></div>cross-cloud auth (WIF)</div>
+        <div class="arch-leg"><div class="arch-leg-line d"></div>CI/CD deploy</div>
+        <div class="arch-leg"><div class="arch-leg-sq"></div>supporting infra</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">Anas Almana</div>
+  <div class="footer-links">
+    <a href="https://github.com/AlmanaAnas/multi-cloud-trading-bot" target="_blank">GitHub</a>
+    <a href="https://github.com/AlmanaAnas/multi-cloud-trading-bot/blob/main/README.md" target="_blank">README</a>
+    <a href="https://linkedin.com" target="_blank">LinkedIn</a>
+  </div>
+  <div class="footer-copy">Built with Terraform · AWS · GCP</div>
+</footer>
+
+</body>
+</html>
