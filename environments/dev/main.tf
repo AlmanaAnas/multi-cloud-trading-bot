@@ -132,10 +132,22 @@ locals {
   }
 }
 
-module "landing" {
-  source      = "../../modules/gcp/landing"
-  project_id  = var.gcp_project_id
-  region      = var.gcp_region
-  bucket_name = "${var.project_name}-landing-${var.environment}"
-  source_file = "../../app/landing/index.html"
+
+
+module "landing_api" {
+  source                = "../../modules/gcp/cloud-run-api"
+  project_id            = var.gcp_project_id
+  region                = var.gcp_region
+  service_name          = "${var.project_name}-api-${var.environment}"
+  image                 = "gcr.io/${var.gcp_project_id}/${var.project_name}-api:latest"
+  service_account_email = module.gcp_iam_wif.cloud_function_sa_email
+
+  environment_variables = {
+    GCP_PROJECT_ID = var.gcp_project_id
+    BQ_DATASET     = module.gcp_bigquery.dataset_id
+    BQ_TABLE       = module.gcp_bigquery.table_id
+    ENVIRONMENT    = var.environment
+  }
+
+  labels = local.common_labels
 }
