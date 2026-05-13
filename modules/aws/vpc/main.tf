@@ -161,7 +161,7 @@ resource "aws_vpc_security_group_egress_rule" "lambda_https" {
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"
-  description       = "HTTPS egress to Binance API and GCP Pub/Sub"
+  description = "Lambda function - outbound HTTPS only"
 }
 
 # ── VPC Endpoints ─────────────────────────────────────────
