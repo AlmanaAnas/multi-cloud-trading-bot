@@ -62,7 +62,7 @@ resource "aws_iam_role_policy" "github_actions" {
           "events:*",
           "logs:*",
           "ssm:*",
-          "cloudwatch:*"
+          "cloudwatch:*",
           "ec2:*"
         ]
         Resource = "*"
