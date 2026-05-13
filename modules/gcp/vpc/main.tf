@@ -59,10 +59,13 @@ resource "google_vpc_access_connector" "main" {
   region        = var.region
   network       = google_compute_network.main.id
   ip_cidr_range = var.connector_subnet_cidr
-
   min_instances = 2
   max_instances = 3
-  machine_type  = "e2-micro"  # smallest available — free tier eligible
+  machine_type  = "e2-micro"
+
+  timeouts {
+    create = "10m"
+  }
 }
 
 # ── Firewall rules ─────────────────────────────────────────
